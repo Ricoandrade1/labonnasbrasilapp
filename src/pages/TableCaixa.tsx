@@ -15,7 +15,7 @@ interface Table {
   server?: string;
 }
 
-const Tables = () => {
+const TableCaixa = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [tables] = useState<Table[]>(
@@ -171,4 +171,4 @@ const Tables = () => {
   );
 };
 
-export default Tables;
+export default TableCaixa;

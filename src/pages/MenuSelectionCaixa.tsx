@@ -4,16 +4,17 @@ import { useAuth } from "@/context/AuthContext";
 import { MenuCategory } from "@/components/MenuCategory";
 import { OrderSummary } from "@/components/OrderSummary";
 import { MenuItem, Order, OrderItem } from "@/types/menu";
-import { menuItems, categories } from "@/data/menuItems";
 import { useToast } from "@/hooks/use-toast";
+import { db } from "@/lib/firebase";
+import { doc, updateDoc } from "firebase/firestore";
 
-const MenuSelection = () => {
+const MenuSelectionCaixa = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
   const { user } = useAuth();
   
-  const tableId = new URLSearchParams(location.search).get("table") || "";
+  const tableId = new URLSearchParams(location.search).get("tablecaixa") || "";
   
   const [activeOrder, setActiveOrder] = useState<Order>({
     id: `order-${Date.now()}`,
@@ -50,12 +51,14 @@ const MenuSelection = () => {
         sum + (item.price * item.quantity), 0
       );
 
-      return {
+      const updatedOrder = {
         ...prev,
         items: updatedItems,
         total,
         updatedAt: new Date().toISOString()
       };
+      console.log("Pedido atualizado:", updatedOrder);
+      return updatedOrder;
     });
 
     toast({
@@ -78,12 +81,14 @@ const MenuSelection = () => {
         sum + (item.price * item.quantity), 0
       );
 
-      return {
+      const updatedOrder = {
         ...prev,
         items: updatedItems,
         total,
         updatedAt: new Date().toISOString()
       };
+      console.log("Pedido atualizado (updateQuantity):", updatedOrder);
+      return updatedOrder;
     });
   };
 
@@ -94,12 +99,14 @@ const MenuSelection = () => {
         sum + (item.price * item.quantity), 0
       );
 
-      return {
+      const updatedOrder = {
         ...prev,
         items: updatedItems,
         total,
         updatedAt: new Date().toISOString()
       };
+      console.log("Pedido atualizado (removeItem):", updatedOrder);
+      return updatedOrder;
     });
   };
 
@@ -118,7 +125,7 @@ const MenuSelection = () => {
     });
   };
 
-  const handleCompleteOrder = () => {
+  const handleCompleteOrder = async () => {
     if (activeOrder.items.length === 0) {
       toast({
         title: "Erro",
@@ -140,7 +147,39 @@ const MenuSelection = () => {
       description: "O pedido foi enviado para a cozinha"
     });
 
-    navigate("/tables");
+    // Add table to openTables in localStorage
+    const openTables = JSON.parse(localStorage.getItem("openTables") || "[]");
+    localStorage.setItem(
+      "openTables",
+      JSON.stringify([...openTables, { tableNumber: tableId, status: "occupied" }])
+    );
+
+    try {
+      const tableRef = doc(db, "tables", tableId);
+      await updateDoc(tableRef, {
+        status: "occupied",
+      });
+
+      // Save order to firebase
+      const orderRef = doc(db, "orders", activeOrder.id);
+      // setDoc is not working, using updateDoc instead
+      await updateDoc(orderRef, { ...activeOrder, status: "completed" });
+      console.log("Pedido salvo no firebase:", activeOrder);
+
+      toast({
+        title: "Pedido finalizado",
+        description: "O pedido foi enviado para a cozinha"
+      });
+    } catch (error) {
+      console.error("Error updating table status:", error);
+      toast({
+        title: "Erro",
+        description: "Erro ao finalizar o pedido",
+        variant: "destructive"
+      });
+    }
+
+    navigate("/caixa");
   };
 
   return (
@@ -150,14 +189,6 @@ const MenuSelection = () => {
           {/* Menu Categories */}
           <div className="lg:col-span-2">
             <div className="space-y-6">
-              {categories.map(category => (
-                <MenuCategory
-                  key={category.id}
-                  category={category}
-                  items={menuItems.filter(item => item.category === category.id)}
-                  onItemSelect={handleItemSelect}
-                />
-              ))}
             </div>
           </div>
 
@@ -179,4 +210,4 @@ const MenuSelection = () => {
   );
 };
 
-export default MenuSelection;
+export default MenuSelectionCaixa;
