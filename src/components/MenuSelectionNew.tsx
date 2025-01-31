@@ -189,6 +189,7 @@ const MenuSelectionNew = () => {
               </div>
               <div className="lg:col-span-1">
                 <OrderSummaryNew
+                  key={currentOrders.length}
                   orderItems={currentOrders}
                   tableResponsible={responsibleName}
                   onTableResponsibleChange={setResponsibleName}
