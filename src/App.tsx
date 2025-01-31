@@ -18,6 +18,7 @@ function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/" element={<TableCaixa />} />
+          <Route path="/tablecaixa" element={<TableCaixa />} />
           <Route path="/tables" element={<Tables />} />
           <Route path="/menu" element={<MenuSelection />} />
           <Route path="/menu?tablecaixa=" element={<MenuSelectionCaixa />} />

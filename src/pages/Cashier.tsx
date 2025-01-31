@@ -47,7 +47,7 @@ const Cashier = () => {
           status: "occupied",
         };
         await addTable(newTable);
-        navigate("/tables");
+        navigate(`/tablecaixa`);
       }}>Abrir Mesa</Button>
       <div className="grid gap-6 md:grid-cols-2">
         <Card className="mb-4">

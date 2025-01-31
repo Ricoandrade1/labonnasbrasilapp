@@ -62,7 +62,7 @@ const TableCaixa = () => {
   };
 
   const handleTableClick = (tableId: number) => {
-    navigate(`/menu?table=${tableId}`);
+    navigate(`/menu?tablecaixa=${tableId}`);
   };
 
   return (
