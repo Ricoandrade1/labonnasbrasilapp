@@ -3,6 +3,7 @@ import { Button } from "../ui/button"
 import { Input } from "../ui/input"
 import { Trash2, User } from "lucide-react"
 import { OrderItem } from "../../types"
+import React from "react";
 
 interface OrderSummaryProps {
   orderItems: OrderItem[]
@@ -12,16 +13,22 @@ interface OrderSummaryProps {
   onSubmit: () => void
 }
 
-export const OrderSummary = ({
+export const OrderSummaryNew = ({
   orderItems,
   tableResponsible,
   onTableResponsibleChange,
   onRemoveItem,
   onSubmit
 }: OrderSummaryProps) => {
-  console.log("OrderSummary - orderItems", orderItems);
+  console.log("OrderSummaryNew - orderItems", orderItems);
   const getTotalPrice = () => {
-    return orderItems.reduce((total, item) => total + (item.price * item.quantity), 0)
+    console.log("OrderSummaryNew - getTotalPrice - orderItems", orderItems);
+    if (!orderItems || orderItems === null || orderItems === undefined || orderItems.length === 0) {
+      return 0;
+    }
+    const totalPrice = orderItems.reduce((total, item) => total + (item.price * item.quantity), 0);
+    console.log("OrderSummaryNew - getTotalPrice - totalPrice", totalPrice);
+    return totalPrice;
   }
 
   return (
@@ -46,7 +53,7 @@ export const OrderSummary = ({
           
           <div className="space-y-3">
             <h3 className="font-medium text-sm text-gray-700">Itens do Pedido</h3>
-            {orderItems.map((item) => (
+            {orderItems && orderItems.map((item) => (
               <div key={item.id} className="flex justify-between items-center bg-gray-50 p-2 rounded-lg">
                 <div className="flex items-center gap-2">
                   <Button
@@ -83,5 +90,5 @@ export const OrderSummary = ({
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }

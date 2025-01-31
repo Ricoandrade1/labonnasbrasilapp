@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore, collection, addDoc, doc } from "firebase/firestore";
+import { getFirestore, collection, addDoc, doc, getDocs } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBJQl6t7LyOlAPhQ11UZCGqPv--4nfvoYs",
@@ -38,6 +38,7 @@ const addOrder = async (orderData: {
   paymentMethod: string;
   timestamp: string;
 }) => {
+  console.log("addOrder - orderData", orderData);
   try {
     const docRef = await addDoc(collection(db, "Pedidos"), orderData);
     console.log("Document written with ID: ", docRef.id);
@@ -74,4 +75,18 @@ const addTransaction = async (transactionData: {
   }
 };
 
-export { db, addTable, addOrder, addProduct, addTransaction };
+const getTables = async () => {
+  try {
+    const querySnapshot = await getDocs(collection(db, "Mesas"));
+    const tables = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    return tables;
+  } catch (e) {
+    console.error("Error getting documents: ", e);
+    return [];
+  }
+};
+
+export { db, addTable, addOrder, addProduct, addTransaction, getTables };

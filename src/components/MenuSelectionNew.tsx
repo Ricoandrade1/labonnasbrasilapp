@@ -8,15 +8,17 @@ import { OrderSummaryNew } from "./menu/OrderSummaryNew";
 import { menuItems } from "../data/menu";
 import { MenuItem, TableOrder } from "../types";
 import { v4 as uuidv4 } from "uuid";
-import { addOrder } from "../lib/firebase";
-import { OrderManagerProvider, useOrderManager } from "./OrderManager";
+import { addOrder, getTables } from "../lib/firebase";
+import { OrderManagerProvider,  } from "./OrderManager";
+import  useOrderManager  from "./OrderManager";
 
-const MenuSelection = () => {
+const MenuSelectionNew = () => {
   const [searchParams] = useSearchParams();
   const [tableNumber, setTableNumber] = useState<number | null>(null);
   const [tableSelected, setTableSelected] = useState(false);
   const [responsibleName, setResponsibleName] = useState("");
   const { currentOrders, addItem, removeItem, updateQuantity, clearOrders, getTotalPrice } = useOrderManager();
+  const [tables, setTables] = useState<any[]>([]);
 
   useEffect(() => {
     const tableId = searchParams.get("table");
@@ -24,6 +26,14 @@ const MenuSelection = () => {
       setTableNumber(Number(tableId));
       setTableSelected(true);
     }
+
+    const fetchTables = async () => {
+      const tablesData = await getTables();
+      console.log("MenuSelectionNew - fetchTables - tablesData", tablesData);
+      setTables(tablesData);
+    };
+
+    fetchTables();
   }, [searchParams]);
 
   const getItemQuantity = (itemId: string) => {
@@ -104,19 +114,6 @@ const MenuSelection = () => {
     setResponsibleName("");
     setTableSelected(false);
     setTableNumber(null);
-  };
-
-  const mockOrder: TableOrder = {
-    id: "1",
-    tableId: tableNumber?.toString() || "",
-    responsibleName: "John Doe",
-    items: [
-      { id: "1", name: "Pizza", price: 25.0, quantity: 2, category: "rodizio" },
-      { id: "2", name: "Soda", price: 5.0, quantity: 3, category: "bebida" },
-    ],
-    timestamp: new Date().toISOString(),
-    status: "pending",
-    total: 65.0,
   };
 
   return (
@@ -207,4 +204,4 @@ const MenuSelection = () => {
   );
 };
 
-export default MenuSelection;
+export default MenuSelectionNew;
