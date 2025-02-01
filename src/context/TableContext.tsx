@@ -9,6 +9,9 @@ interface Table {
   status: TableStatus
   orders: TableOrder[]
   totalAmount: number
+  occupants?: number;
+  timeSeated?: string;
+  server?: string;
 }
 
 interface TableContextType {

@@ -37,6 +37,8 @@ const addOrder = async (orderData: {
   total: number;
   paymentMethod: string;
   timestamp: string;
+  responsibleName: string;
+  status: string;
 }) => {
   console.log("addOrder - orderData", orderData);
   try {

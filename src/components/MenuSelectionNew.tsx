@@ -11,29 +11,44 @@ import { v4 as uuidv4 } from "uuid";
 import { addOrder, getTables } from "../lib/firebase";
 import { OrderManagerProvider,  } from "./OrderManager";
 import  useOrderManager  from "./OrderManager";
+import { useTable } from "@/context/TableContext";
 
 const MenuSelectionNew = () => {
   const [searchParams] = useSearchParams();
-  const [tableNumber, setTableNumber] = useState<number | null>(null);
-  const [tableSelected, setTableSelected] = useState(false);
-  const [responsibleName, setResponsibleName] = useState("");
   const { currentOrders, addItem, removeItem, updateQuantity, clearOrders, getTotalPrice } = useOrderManager();
   const [tables, setTables] = useState<any[]>([]);
+  const [_, setUpdate] = useState(0);
+  const [responsibleName, setResponsibleName] = useState("");
+  const { addOrdersToTable, getTableOrders } = useTable();
+  const [orderHistory, setOrderHistory] = useState<TableOrder[]>([]);
 
   useEffect(() => {
-    const tableId = searchParams.get("table");
-    if (tableId) {
-      setTableNumber(Number(tableId));
-      setTableSelected(true);
-    }
-
     const fetchTables = async () => {
       const tablesData = await getTables();
       console.log("MenuSelectionNew - fetchTables - tablesData", tablesData);
       setTables(tablesData);
     };
 
+    const fetchOrderHistory = () => {
+      const tableId = searchParams.get("table");
+      if (tableId) {
+        const orders = getTableOrders(parseInt(tableId));
+        console.log("MenuSelectionNew - fetchOrderHistory - orders", orders);
+        const tableOrders = orders.map(order => ({
+          id: uuidv4(),
+          tableId: tableId,
+          responsibleName: "",
+          items: [order],
+          timestamp: new Date().toISOString(),
+          status: "completed",
+          total: order.price * order.quantity,
+        } as TableOrder));
+        setOrderHistory(tableOrders);
+      }
+    };
+
     fetchTables();
+    fetchOrderHistory();
   }, [searchParams]);
 
   const getItemQuantity = (itemId: string) => {
@@ -52,36 +67,10 @@ const MenuSelectionNew = () => {
         removeItem(item.id);
       }
     }
-  };
-
-  const handleTableNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseInt(e.target.value);
-    if (value > 0 && value <= 50) {
-      setTableNumber(value);
-    } else {
-      toast.error("Digite um número entre 1 e 50");
-    }
-  };
-
-  const handleTableSelection = () => {
-    if (!tableNumber) {
-      toast.error("Selecione um número de mesa válido");
-      return;
-    }
-    setTableSelected(true);
+    window.location.reload();
   };
 
   const handleSendToKitchen = async () => {
-    if (tableNumber === null) {
-      toast.error("Selecione o número da mesa");
-      return;
-    }
-
-    if (!responsibleName) {
-      toast.error("Por favor, insira o nome do responsável");
-      return;
-    }
-
     if (currentOrders.length === 0) {
       toast.error("Por favor, selecione pelo menos um item");
       return;
@@ -89,13 +78,15 @@ const MenuSelectionNew = () => {
 
     const tableOrder: TableOrder = {
       id: uuidv4(),
-      tableId: tableNumber.toString(),
-      responsibleName,
+      tableId: searchParams.get("table") || "1",
+      responsibleName: responsibleName,
       items: currentOrders,
       timestamp: new Date().toISOString(),
       status: "pending",
       total: getTotalPrice(),
     };
+
+    addOrdersToTable(parseInt(tableOrder.tableId), [tableOrder]);
 
     addOrder({
       tableId: tableOrder.tableId,
@@ -103,6 +94,8 @@ const MenuSelectionNew = () => {
       total: tableOrder.total,
       paymentMethod: "pending",
       timestamp: tableOrder.timestamp,
+      responsibleName: tableOrder.responsibleName,
+      status: "ocupado",
     });
 
     console.log("Sending order to kitchen:", tableOrder);
@@ -112,94 +105,56 @@ const MenuSelectionNew = () => {
     // Reset form
     clearOrders();
     setResponsibleName("");
-    setTableSelected(false);
-    setTableNumber(null);
   };
 
   return (
     <OrderManagerProvider>
       <div className="container mx-auto px-3 sm:px-4 md:px-6 py-4 md:py-6">
-        {!tableSelected ? (
-          <div className="flex flex-col items-center max-w-md mx-auto">
-            <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">
-              Selecione a Mesa
-            </h2>
-            <Input
-              type="number"
-              min={1}
-              max={50}
-              placeholder="Número da mesa (1-50)"
-              value={tableNumber ?? ""}
-              onChange={handleTableNumberChange}
-              className="mb-4 w-full"
-            />
-            <Input
-              type="text"
-              placeholder="Nome do responsável"
-              value={responsibleName}
-              onChange={(e) => setResponsibleName(e.target.value)}
-              className="mb-4 w-full"
-            />
+        <div className="space-y-8">
+          <div className="flex items-center justify-between">
             <Button
-              onClick={handleTableSelection}
-              disabled={!tableNumber || !responsibleName}
-              className="bg-[#518426] hover:bg-[#518426]/90 w-full sm:w-auto"
+              onClick={handleSendToKitchen}
+              disabled={currentOrders.length === 0}
+              className="bg-[#518426] hover:bg-[#518426]/90"
             >
-              Selecionar Mesa
+              Enviar para Cozinha
             </Button>
           </div>
-        ) : (
-          <div className="space-y-8">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-2xl font-bold text-gray-800">
-                  Mesa {tableNumber}
-                </h2>
-                <p className="text-gray-600">Responsável: {responsibleName}</p>
-              </div>
-              <Button
-                onClick={handleSendToKitchen}
-                disabled={currentOrders.length === 0}
-                className="bg-[#518426] hover:bg-[#518426]/90"
-              >
-                Enviar para Cozinha
-              </Button>
-            </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-              <div className="lg:col-span-3 space-y-8">
-                <MenuSection
-                  title="Rodízios"
-                  items={menuItems.rodizio}
-                  getItemQuantity={getItemQuantity}
-                  onQuantityChange={handleQuantityChange}
-                />
-                <MenuSection
-                  title="Diárias"
-                  items={menuItems.diaria}
-                  getItemQuantity={getItemQuantity}
-                  onQuantityChange={handleQuantityChange}
-                />
-                <MenuSection
-                  title="Bebidas"
-                  items={menuItems.bebidas}
-                  getItemQuantity={getItemQuantity}
-                  onQuantityChange={handleQuantityChange}
-                />
-              </div>
-              <div className="lg:col-span-1">
-                <OrderSummaryNew
-                  key={currentOrders.length}
-                  orderItems={currentOrders}
-                  tableResponsible={responsibleName}
-                  onTableResponsibleChange={setResponsibleName}
-                  onRemoveItem={removeItem}
-                  onSubmit={handleSendToKitchen}
-                />
-              </div>
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            <div className="lg:col-span-3 space-y-8">
+              <MenuSection
+                title="Rodízios"
+                items={menuItems.rodizio}
+                getItemQuantity={getItemQuantity}
+                onQuantityChange={handleQuantityChange}
+              />
+              <MenuSection
+                title="Diárias"
+                items={menuItems.diaria}
+                getItemQuantity={getItemQuantity}
+                onQuantityChange={handleQuantityChange}
+              />
+              <MenuSection
+                title="Bebidas"
+                items={menuItems.bebidas}
+                getItemQuantity={getItemQuantity}
+                onQuantityChange={handleQuantityChange}
+              />
+            </div>
+            <div className="lg:col-span-1">
+              <OrderSummaryNew
+                key={currentOrders.length}
+                orderItems={currentOrders}
+                tableResponsible={responsibleName}
+                onTableResponsibleChange={setResponsibleName}
+                onRemoveItem={removeItem}
+                onSubmit={handleSendToKitchen}
+                orderHistory={orderHistory}
+              />
             </div>
           </div>
-        )}
+        </div>
       </div>
     </OrderManagerProvider>
   );

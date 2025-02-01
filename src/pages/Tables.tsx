@@ -1,65 +1,14 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { LogOut, Users, Clock, Coffee } from "lucide-react";
-
-type TableStatus = "available" | "occupied" | "closing";
-
-interface Table {
-  id: number;
-  status: TableStatus;
-  occupants?: number;
-  timeSeated?: string;
-  server?: string;
-}
+import { useTable } from "@/context/TableContext";
 
 const Tables = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const [tables] = useState<Table[]>(
-    Array.from({ length: 50 }, (_, i) => ({
-      id: i + 1,
-      status: "available",
-      occupants: Math.floor(Math.random() * 6) + 1,
-      timeSeated: "19:30",
-      server: "João",
-    }))
-  );
-
-  const getStatusConfig = (status: TableStatus) => {
-    switch (status) {
-      case "available":
-        return {
-          color: "bg-emerald-100 hover:bg-emerald-200",
-          textColor: "text-emerald-700",
-          borderColor: "border-emerald-200",
-          label: "Disponível"
-        };
-      case "occupied":
-        return {
-          color: "bg-rose-100 hover:bg-rose-200",
-          textColor: "text-rose-700",
-          borderColor: "border-rose-200",
-          label: "Ocupada"
-        };
-      case "closing":
-        return {
-          color: "bg-amber-100 hover:bg-amber-200",
-          textColor: "text-amber-700",
-          borderColor: "border-amber-200",
-          label: "Fechando"
-        };
-      default:
-        return {
-          color: "bg-gray-100",
-          textColor: "text-gray-700",
-          borderColor: "border-gray-200",
-          label: "Desconhecido"
-        };
-    }
-  };
+  const { tables } = useTable();
 
   const handleTableClick = (tableId: number) => {
     navigate(`/menu?table=${tableId}`);
@@ -134,7 +83,22 @@ const Tables = () => {
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
             {tables.map((table) => {
-              const status = getStatusConfig(table.status);
+              const status = table.status === "available" ? {
+                color: "bg-emerald-100 hover:bg-emerald-200",
+                textColor: "text-emerald-700",
+                borderColor: "border-emerald-200",
+                label: "Disponível"
+              } : table.status === "occupied" ? {
+                color: "bg-rose-100 hover:bg-rose-200",
+                textColor: "text-rose-700",
+                borderColor: "border-rose-200",
+                label: "Ocupada"
+              } : {
+                color: "bg-amber-100 hover:bg-amber-200",
+                textColor: "text-amber-700",
+                borderColor: "border-amber-200",
+                label: "Fechando"
+              };
               return (
                 <button
                   key={table.id}
@@ -147,13 +111,13 @@ const Tables = () => {
                     </span>
                     {table.status !== "available" && (
                       <>
-                        <div className="flex items-center gap-1">
+                        {/* <div className="flex items-center gap-1">
                           <Users className="h-4 w-4 text-gray-500" />
                           <span className="text-sm text-gray-600">{table.occupants}</span>
                         </div>
                         <div className="text-xs text-gray-500">
                           {table.timeSeated} • {table.server}
-                        </div>
+                        </div> */}
                       </>
                     )}
                     <span className={`text-xs font-medium ${status.textColor}`}>

@@ -9,6 +9,7 @@ import Test from "@/pages/Test";
 import Cashier from "@/pages/Cashier";
 import MenuSelectionCaixa from "@/pages/MenuSelectionCaixa";
 import TableCaixa from "@/pages/TableCaixa";
+import { TableProvider } from "@/context/TableContext";
 
 function App() {
   return (
@@ -17,11 +18,10 @@ function App() {
         <SidebarMenu />
         <Routes>
           <Route path="/login" element={<Login />} />
-          <Route path="/" element={<TableCaixa />} />
+          <Route path="/" element={<TableProvider><Tables /></TableProvider>} />
           <Route path="/tablecaixa" element={<TableCaixa />} />
-          <Route path="/tables" element={<Tables />} />
-          <Route path="/menu" element={<MenuSelection />} />
-          <Route path="/menu?tablecaixa=" element={<MenuSelectionCaixa />} />
+          <Route path="/tables" element={<TableProvider><Tables /></TableProvider>} />
+          <Route path="/menu" element={<TableProvider><MenuSelection /></TableProvider>} />
           <Route path="/caixa" element={<Cashier />} />
           <Route path="/gerente" element={<div>Página do Gerente</div>} />
           <Route path="/adm" element={<div>Página do Administrador</div>} />
