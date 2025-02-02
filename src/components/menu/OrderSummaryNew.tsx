@@ -26,31 +26,11 @@ export const OrderSummaryNew = ({
   orderHistory,
   tableParam
 }: OrderSummaryProps) => {
-  const [responsibleName, setResponsibleName] = useState<string | null>(null);
+  const [responsibleNames, setResponsibleNames] = useState<string[]>([]);
 
   useEffect(() => {
-    if (orderHistory && orderHistory.length > 0 && tableParam) {
-      const fetchResponsibleName = async () => {
-        try {
-          const ordersRef = collection(db, "Pedidos");
-          const q = query(ordersRef, where("tableId", "==", tableParam));
-          const querySnapshot = await getDocs(q);
-          if (!querySnapshot.empty) {
-            const order = querySnapshot.docs[0].data();
-            setResponsibleName(order.responsibleName);
-          } else {
-            setResponsibleName("N/A");
-          }
-        } catch (error) {
-          console.error("Error fetching responsible name:", error);
-          setResponsibleName("N/A");
-        }
-      };
-      fetchResponsibleName();
-    } else {
-      setResponsibleName(null);
-    }
-  }, [orderHistory, tableParam]);
+    setResponsibleNames(tableResponsible ? [tableResponsible] : []);
+  }, [tableResponsible]);
 
   const getTotalPrice = () => {
     if (!orderItems || orderItems === null || orderItems === undefined || orderItems.length === 0) {
@@ -79,11 +59,11 @@ export const OrderSummaryNew = ({
                   className="border-0 focus-visible:ring-0"
                 />
               </div>
-              {responsibleName === "N/A" && tableResponsible === "" && (
+              {responsibleNames.includes("N/A") && tableResponsible === "" && (
                 <p className="text-sm text-red-500">Por favor, inclua o nome do responsável</p>
               )}
               {tableResponsible && (
-                <p className="text-sm text-gray-500">Responsável: {tableResponsible}</p>
+                <p className="text-sm text-gray-500">Responsável: {tableResponsible} {responsibleNames.filter(name => name !== "N/A").length > 0 ? `(${responsibleNames.filter(name => name !== "N/A").join(", ")})` : ""}</p>
               )}
             </div>
             
@@ -135,9 +115,6 @@ export const OrderSummaryNew = ({
         </CardHeader>
         <CardContent className="p-4">
           <div className="space-y-3">
-            {responsibleName && (
-              <h4 className="font-medium text-gray-700">Responsável: {responsibleName}</h4>
-            )}
             {orderHistory && orderHistory.map((order) => (
               <div key={order.id} className="space-y-2 border-b pb-2">
                 {order.items.map((item) => (

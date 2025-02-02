@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
-
 import { TableOrder, OrderItem } from '../types'
+import { clearTables } from '../lib/firebase';
 
 export type TableStatus = "available" | "occupied" | "closing"
 
@@ -21,6 +21,7 @@ interface TableContextType {
   clearTable: (tableId: number) => void
   getTableOrders: (tableId: number) => OrderItem[]
   setAllTablesAvailable: () => void
+  forceUpdateTables: () => void
 }
 
 const TableContext = createContext<TableContextType | undefined>(undefined)
@@ -113,7 +114,9 @@ export const TableProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return table?.orders.flatMap(order => order.items) || []
   }
 
-  const setAllTablesAvailable = () => {
+  const [updateTables, setUpdateTables] = useState(0);
+
+  const setAllTablesAvailable = async () => {
     setTables(prevTables => {
       return prevTables.map(table => ({
         ...table,
@@ -122,6 +125,12 @@ export const TableProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         totalAmount: 0
       }))
     })
+    await clearTables();
+    setUpdateTables(prev => prev + 1);
+  }
+
+  const forceUpdateTables = () => {
+    setUpdateTables(prev => prev + 1);
   }
 
   return (
@@ -131,7 +140,8 @@ export const TableProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       updateOrderStatus,
       clearTable,
       getTableOrders,
-      setAllTablesAvailable
+      setAllTablesAvailable,
+      forceUpdateTables
     }}>
       {children}
     </TableContext.Provider>

@@ -97,7 +97,10 @@ const MenuSelectionNew = () => {
       total: getTotalPrice(),
     };
 
+    setOrderHistory(prev => [...prev, tableOrder]);
+
     addOrdersToTable(parseInt(tableOrder.tableId), [tableOrder]);
+    console.log("MenuSelectionNew - handleSendToKitchen - tableOrder.tableId", tableOrder.tableId);
 
     addOrder({
       tableId: tableOrder.tableId,
@@ -105,7 +108,7 @@ const MenuSelectionNew = () => {
       total: tableOrder.total,
       paymentMethod: "pending",
       timestamp: tableOrder.timestamp,
-      responsibleName: tableOrder.responsibleName,
+      responsibleName: responsibleName,
       status: "ocupado",
       source: tableParam?.includes("tablecaixa") ? "Caixa" : "Mesa",
     });
@@ -117,6 +120,7 @@ const MenuSelectionNew = () => {
 
     toast.success(`${currentOrders.length} itens enviados para a cozinha`);
 
+    setOrderHistory(prev => [...prev, {...tableOrder, responsibleName: responsibleName}]);
     window.location.href = window.location.href;
     // Reset form
     clearOrders();

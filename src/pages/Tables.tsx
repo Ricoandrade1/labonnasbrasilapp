@@ -5,16 +5,21 @@ import { Card } from "@/components/ui/card";
 import { LogOut, Users, Clock, Coffee } from "lucide-react";
 import { useTable } from "@/context/TableContext";
 import { TableStatus } from "@/context/TableContext";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 const Tables = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const { tables, updateOrderStatus, setAllTablesAvailable } = useTable();
+  const { tables, updateOrderStatus, setAllTablesAvailable, forceUpdateTables } = useTable();
+  const [updateTables, setUpdateTables] = useState(0);
 
   useEffect(() => {
     console.log("Tables - tables", tables);
-  }, [tables]);
+  }, [tables, updateTables]);
+
+  useEffect(() => {
+    forceUpdateTables();
+  }, []);
 
   const getStatusConfig = (status: TableStatus) => {
     switch (status) {

@@ -92,4 +92,28 @@ const getTables = async () => {
   }
 };
 
-export { db, addTable, addOrder, addProduct, addTransaction, getTables };
+const clearOrders = async () => {
+  try {
+    const querySnapshot = await getDocs(collection(db, "Pedidos"));
+    for (const doc of querySnapshot.docs) {
+      await (doc as any).ref.delete();
+    }
+    console.log("All orders cleared from database");
+  } catch (e) {
+    console.error("Error clearing orders: ", e);
+  }
+};
+
+const clearTables = async () => {
+  try {
+    const querySnapshot = await getDocs(collection(db, "Mesas"));
+    for (const doc of querySnapshot.docs) {
+      await (doc as any).ref.delete();
+    }
+    console.log("All tables cleared from database");
+  } catch (e) {
+    console.error("Error clearing tables: ", e);
+  }
+};
+
+export { db, addTable, addOrder, addProduct, addTransaction, getTables, clearOrders, clearTables };

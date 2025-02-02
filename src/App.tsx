@@ -10,6 +10,7 @@ import Cashier from "@/pages/Cashier";
 import MenuSelectionCaixa from "@/pages/MenuSelectionCaixa";
 import TableCaixa from "@/pages/TableCaixa";
 import { TableProvider } from "@/context/TableContext";
+import ResetTables from "./components/ResetTables";
 
 function App() {
   return (
@@ -26,6 +27,7 @@ function App() {
           <Route path="/gerente" element={<div>Página do Gerente</div>} />
           <Route path="/adm" element={<div>Página do Administrador</div>} />
           <Route path="/test" element={<Test />} />
+          <Route path="/reset" element={<TableProvider><ResetTables /></TableProvider>} />
         </Routes>
         <Toaster />
       </Router>
