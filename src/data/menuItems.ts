@@ -28,7 +28,60 @@ export const menuItems: MenuItem[] = [
     image: "/images/picanha-especial.jpg", // Placeholder image path
     available: true
   },
-  // Add more menu items...
+  {
+    id: "d1",
+    name: "Diário 8€",
+    description: "Buffet sem churrasco - 1 bebida - sobremesa e café",
+    price: 8,
+    category: "diaria",
+    image: "/images/diario8.jpg",
+    available: true
+  },
+  {
+    id: "d2",
+    name: "Diário 9€",
+    description: "Buffet sem churrasco - 1 corte de maminha e chouriço - 1 bebida - sobremesa e café",
+    price: 9,
+    category: "diaria",
+    image: "/images/diario9.jpg",
+    available: true
+  },
+  {
+    id: "d3",
+    name: "Diário 10€",
+    description: "Buffet sem churrasco - 1 corte de maminha e chouriço - 1 bebida - sobremesa e café",
+    price: 10,
+    category: "diaria",
+    image: "/images/diario10.jpg",
+    available: true
+  },
+  {
+    id: "b1",
+    name: "Água Mineral",
+    description: "",
+    price: 1.5,
+    category: "bebida",
+    image: "/images/agua.jpg",
+    available: true
+  },
+  {
+    id: "b2",
+    name: "Refrigerante",
+    description: "",
+    price: 2,
+    category: "bebida",
+    image: "/images/refrigerante.jpg",
+    available: true
+  },
+  {
+    id: "b3",
+    name: "Suco Natural",
+    description: "",
+    price: 2.5,
+    category: "bebida",
+    image: "/images/suco.jpg",
+    available: true
+  }
 ];
 
 export const categories = [
