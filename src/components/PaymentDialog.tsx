@@ -1,137 +1,76 @@
-import React, { useState } from "react"
+import React from "react";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-} from "./ui/dialog"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "./ui/select"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "./ui/table"
-import { Button } from "./ui/button"
-import { useToast } from "../hooks/use-toast"
-import { PaymentInfo, TableOrder } from "../types"
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { Button } from "@/components/ui/button";
 
 interface PaymentDialogProps {
-  order: TableOrder
-  handlePayment: (order: TableOrder, method: PaymentInfo["method"]) => Promise<void>
-  onClose?: () => void
+  paymentMethod: string | null;
+  total: number;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onConfirm: () => void;
 }
 
-const PaymentDialog: React.FC<PaymentDialogProps> = ({ order, handlePayment, onClose }) => {
-  const [isLoading, setIsLoading] = useState(false)
-  const [paymentMethod, setPaymentMethod] = useState<PaymentInfo["method"] | null>(null)
-  const { toast } = useToast()
-
-  const handlePaymentSubmit = async () => {
-    if (!paymentMethod) return
-
-    try {
-      setIsLoading(true)
-      await handlePayment(order, paymentMethod)
-      toast({
-        title: "Pagamento processado",
-        description: `Pagamento de R$ ${order.total.toFixed(2)} processado com sucesso`,
-      })
-      onClose?.()
-    } catch (error) {
-      toast({
-        title: "Falha no pagamento",
-        description: error instanceof Error ? error.message : "Por favor, tente novamente",
-        variant: "destructive",
-      })
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
+const PaymentDialog: React.FC<PaymentDialogProps> = ({ paymentMethod, total, open, onOpenChange, onConfirm }) => {
   return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button variant="outline">Ver Pedido</Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-3xl">
-        <DialogHeader>
-          <DialogTitle>Detalhes do Pedido - Mesa {order.tableId}</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Item</TableHead>
-                <TableHead>Quantidade</TableHead>
-                <TableHead>Preço</TableHead>
-                <TableHead>Total</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {order.items.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell>{item.name}</TableCell>
-                  <TableCell>{item.quantity}</TableCell>
-                  <TableCell>R$ {item.price.toFixed(2)}</TableCell>
-                  <TableCell>
-                    R$ {(item.price * item.quantity).toFixed(2)}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-
-          <div className="flex justify-between items-center">
-            <div className="text-lg font-semibold">
-              Total: R$ {order.total.toFixed(2)}
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent className="bg-white text-black">
+        <AlertDialogHeader>
+          <AlertDialogTitle className="text-lg font-semibold">Finalizar Pagamento</AlertDialogTitle>
+          <AlertDialogDescription className="text-sm text-gray-500">
+            Confirma o pagamento de **R$ {total.toFixed(2)}** por **{paymentMethod}**?
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <div className="flex justify-center space-x-4 mb-4">
+          {paymentMethod === 'Dinheiro' && (
+            <div className="flex flex-col items-center">
+              {/* Ícone de Dinheiro (SVG inline) */}
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8 text-green-500">
+                <path fillRule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zm-1.5 6.75a.75.75 0 00-1.5 0v6a.75.75 0 001.5 0v-6zm3 0a.75.75 0 00-1.5 0v6a.75.75 0 001.5 0v-6z" clipRule="evenodd" />
+              </svg>
+              <p className="text-sm">Dinheiro</p>
             </div>
-          </div>
+          )}
+          {paymentMethod === 'MBWay' && (
+            <div className="flex flex-col items-center">
+              {/* Ícone de MBWay (SVG inline) */}
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8 text-blue-500">
+                <path d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zM9.75 15a.75.75 0 01.75-.75h1.5a.75.75 0 01.75.75v2.25a.75.75 0 01-.75.75h-1.5a.75.75 0 01-.75-.75V15zM15 15a.75.75 0 01.75-.75h.75a.75.75 0 01.75.75v2.25a.75.75 0 01-.75.75h-.75a.75.75 0 01-.75-.75V15zM8.47 7.97a.75.75 0 011.06 0l2.25 2.25a.75.75 0 01-1.06 1.06l-1.72-1.72V12a.75.75 0 01-1.5 0V9.56l-1.72 1.72a.75.75 0 11-1.06-1.06l2.25-2.25zM16.65 7.97a.75.75 0 00-1.06 0l-2.25 2.25a.75.75 0 001.06 1.06l1.72-1.72V12a.75.75 0 001.5 0V9.56l1.72 1.72a.75.75 0 101.06-1.06l-2.25-2.25z" />
+              </svg>
+              <p className="text-sm">MBWay</p>
+            </div>
+          )}
+          {paymentMethod === 'MultiBanco' && (
+            <div className="flex flex-col items-center">
+              {/* Ícone de MultiBanco (SVG inline) */}
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8 text-yellow-500">
+                <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.35-3.75a.75.75 0 00-1.2 0l-2.7 3a.75.75 0 001.2 1.5l1.95-2.17v2.925a.75.75 0 001.5 0v-4.5z" clipRule="evenodd" />
+              </svg>
+              <p className="text-sm">MultiBanco</p>
+            </div>
+          )}
         </div>
-        <DialogFooter className="space-x-2 mt-4">
-          <Select
-            disabled={isLoading}
-            onValueChange={(value) => setPaymentMethod(value as PaymentInfo["method"])}
-          >
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Método de pagamento" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="cash">Dinheiro</SelectItem>
-              <SelectItem value="credit">Cartão de Crédito</SelectItem>
-              <SelectItem value="debit">Cartão de Débito</SelectItem>
-              <SelectItem value="pix">PIX</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button
-            variant="outline"
-            onClick={onClose}
-            disabled={isLoading}
-            className="hover:bg-red-200"
-          >
-            Cancelar
-          </Button>
-          <Button
-            variant="default"
-            onClick={handlePaymentSubmit}
-            disabled={!paymentMethod || isLoading}
-          >
-            {isLoading ? "Processando..." : "Confirmar"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
-}
+        <AlertDialogFooter className="sm:justify-start">
+          <AlertDialogCancel asChild>
+            <Button type="button" variant="secondary" className="bg-gray-200 text-gray-700 hover:bg-gray-300">
+              Cancelar
+            </Button>
+          </AlertDialogCancel>
+          <AlertDialogAction asChild>
+            <Button type="submit" className="bg-green-500 text-white hover:bg-green-600">Confirmar Pagamento</Button>
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+};
 
-export default PaymentDialog
+export default PaymentDialog;
