@@ -1,17 +1,20 @@
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
-import { Button } from "../ui/button"
-import { Input } from "../ui/input"
-import { Trash2, User } from "lucide-react"
-import { OrderItem, TableOrder } from "../../types"
-import React from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+import { Trash2, User } from "lucide-react";
+import { OrderItem, TableOrder } from "../../types";
+import React, { useState, useEffect } from "react";
+import { db } from "@/lib/firebase";
+import { collection, getDocs, query, where } from "firebase/firestore";
 
 interface OrderSummaryProps {
-  orderItems: OrderItem[]
-  tableResponsible: string
-  onTableResponsibleChange: (value: string) => void
-  onRemoveItem: (itemId: string) => void
-  onSubmit: () => void
-  orderHistory: TableOrder[]
+  orderItems: OrderItem[];
+  tableResponsible: string;
+  onTableResponsibleChange: (value: string) => void;
+  onRemoveItem: (itemId: string) => void;
+  onSubmit: () => void;
+  orderHistory: TableOrder[];
+  tableParam: string | null;
 }
 
 export const OrderSummaryNew = ({
@@ -20,18 +23,42 @@ export const OrderSummaryNew = ({
   onTableResponsibleChange,
   onRemoveItem,
   onSubmit,
-  orderHistory
+  orderHistory,
+  tableParam
 }: OrderSummaryProps) => {
-  console.log("OrderSummaryNew - orderItems", orderItems);
+  const [responsibleName, setResponsibleName] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (orderHistory && orderHistory.length > 0 && tableParam) {
+      const fetchResponsibleName = async () => {
+        try {
+          const ordersRef = collection(db, "Pedidos");
+          const q = query(ordersRef, where("tableId", "==", tableParam));
+          const querySnapshot = await getDocs(q);
+          if (!querySnapshot.empty) {
+            const order = querySnapshot.docs[0].data();
+            setResponsibleName(order.responsibleName);
+          } else {
+            setResponsibleName("N/A");
+          }
+        } catch (error) {
+          console.error("Error fetching responsible name:", error);
+          setResponsibleName("N/A");
+        }
+      };
+      fetchResponsibleName();
+    } else {
+      setResponsibleName(null);
+    }
+  }, [orderHistory, tableParam]);
+
   const getTotalPrice = () => {
-    console.log("OrderSummaryNew - getTotalPrice - orderItems", orderItems);
     if (!orderItems || orderItems === null || orderItems === undefined || orderItems.length === 0) {
       return 0;
     }
     const totalPrice = orderItems.reduce((total, item) => total + (item.price * item.quantity), 0);
-    console.log("OrderSummaryNew - getTotalPrice - totalPrice", totalPrice);
     return totalPrice;
-  }
+  };
 
   return (
     <div className="space-y-4">
@@ -52,6 +79,12 @@ export const OrderSummaryNew = ({
                   className="border-0 focus-visible:ring-0"
                 />
               </div>
+              {responsibleName === "N/A" && tableResponsible === "" && (
+                <p className="text-sm text-red-500">Por favor, inclua o nome do responsável</p>
+              )}
+              {tableResponsible && (
+                <p className="text-sm text-gray-500">Responsável: {tableResponsible}</p>
+              )}
             </div>
             
             <div className="space-y-3">
@@ -86,7 +119,7 @@ export const OrderSummaryNew = ({
               </div>
             </div>
 
-            <Button 
+            <Button
               onClick={onSubmit}
               className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-6"
             >
@@ -102,6 +135,9 @@ export const OrderSummaryNew = ({
         </CardHeader>
         <CardContent className="p-4">
           <div className="space-y-3">
+            {responsibleName && (
+              <h4 className="font-medium text-gray-700">Responsável: {responsibleName}</h4>
+            )}
             {orderHistory && orderHistory.map((order) => (
               <div key={order.id} className="space-y-2 border-b pb-2">
                 {order.items.map((item) => (
@@ -119,4 +155,4 @@ export const OrderSummaryNew = ({
       </Card>
     </div>
   );
-}
+};

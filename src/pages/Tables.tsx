@@ -4,13 +4,53 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { LogOut, Users, Clock, Coffee } from "lucide-react";
 import { useTable } from "@/context/TableContext";
+import { TableStatus } from "@/context/TableContext";
+import { useEffect } from "react";
 
 const Tables = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const { tables } = useTable();
+  const { tables, updateOrderStatus, setAllTablesAvailable } = useTable();
+
+  useEffect(() => {
+    console.log("Tables - tables", tables);
+  }, [tables]);
+
+  const getStatusConfig = (status: TableStatus) => {
+    switch (status) {
+      case "available":
+        return {
+          color: "bg-emerald-100 hover:bg-emerald-200",
+          textColor: "text-emerald-700",
+          borderColor: "border-emerald-200",
+          label: "Disponível"
+        };
+      case "occupied":
+        return {
+          color: "bg-rose-100 hover:bg-rose-200",
+          textColor: "text-rose-700",
+          borderColor: "border-rose-200",
+          label: "Ocupada"
+        };
+      case "closing":
+        return {
+          color: "bg-amber-100 hover:bg-amber-200",
+          textColor: "text-amber-700",
+          borderColor: "border-amber-200",
+          label: "Fechando"
+        };
+      default:
+        return {
+          color: "bg-gray-100",
+          textColor: "text-gray-700",
+          borderColor: "border-gray-200",
+          label: "Desconhecido"
+        };
+    }
+  };
 
   const handleTableClick = (tableId: number) => {
+    updateOrderStatus(tableId, "", "pending");
     navigate(`/menu?table=${tableId}`);
   };
 
@@ -83,22 +123,7 @@ const Tables = () => {
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
             {tables.map((table) => {
-              const status = table.status === "available" ? {
-                color: "bg-emerald-100 hover:bg-emerald-200",
-                textColor: "text-emerald-700",
-                borderColor: "border-emerald-200",
-                label: "Disponível"
-              } : table.status === "occupied" ? {
-                color: "bg-rose-100 hover:bg-rose-200",
-                textColor: "text-rose-700",
-                borderColor: "border-rose-200",
-                label: "Ocupada"
-              } : {
-                color: "bg-amber-100 hover:bg-amber-200",
-                textColor: "text-amber-700",
-                borderColor: "border-amber-200",
-                label: "Fechando"
-              };
+              const status = getStatusConfig(table.status);
               return (
                 <button
                   key={table.id}
@@ -130,6 +155,9 @@ const Tables = () => {
             })}
           </div>
         </div>
+      </div>
+      <div className="flex justify-center">
+        <Button onClick={() => setAllTablesAvailable()}>Set All Tables Available</Button>
       </div>
     </div>
   );

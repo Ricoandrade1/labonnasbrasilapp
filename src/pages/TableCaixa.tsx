@@ -1,32 +1,20 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { LogOut, Users, Clock, Coffee } from "lucide-react";
-
-type TableStatus = "available" | "occupied" | "closing";
-
-interface Table {
-  id: number;
-  status: TableStatus;
-  occupants?: number;
-  timeSeated?: string;
-  server?: string;
-}
+import { useTable } from "@/context/TableContext";
+import { TableStatus } from "@/context/TableContext";
+import { useEffect } from "react";
 
 const TableCaixa = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const [tables] = useState<Table[]>(
-    Array.from({ length: 50 }, (_, i) => ({
-      id: i + 1,
-      status: "available",
-      occupants: Math.floor(Math.random() * 6) + 1,
-      timeSeated: "19:30",
-      server: "João",
-    }))
-  );
+  const { tables, updateOrderStatus } = useTable();
+
+  useEffect(() => {
+    console.log("TableCaixa - tables", tables);
+  }, [tables]);
 
   const getStatusConfig = (status: TableStatus) => {
     switch (status) {

@@ -19,8 +19,15 @@ const MenuSelectionNew = () => {
   const [tables, setTables] = useState<any[]>([]);
   const [_, setUpdate] = useState(0);
   const [responsibleName, setResponsibleName] = useState("");
-  const { addOrdersToTable, getTableOrders } = useTable();
+  const { addOrdersToTable, getTableOrders, updateOrderStatus } = useTable();
   const [orderHistory, setOrderHistory] = useState<TableOrder[]>([]);
+
+  const handleResponsibleNameChange = (value: string) => {
+    console.log("responsibleName changed to:", value);
+    setResponsibleName(value);
+  };
+
+  const tableParam = searchParams.get("table") || searchParams.get("tablecaixa");
 
   useEffect(() => {
     const fetchTables = async () => {
@@ -30,13 +37,12 @@ const MenuSelectionNew = () => {
     };
 
     const fetchOrderHistory = () => {
-      const tableId = searchParams.get("table");
-      if (tableId) {
-        const orders = getTableOrders(parseInt(tableId));
+      if (tableParam) {
+        const orders = getTableOrders(parseInt(tableParam));
         console.log("MenuSelectionNew - fetchOrderHistory - orders", orders);
         const tableOrders = orders.map(order => ({
           id: uuidv4(),
-          tableId: tableId,
+          tableId: tableParam,
           responsibleName: "",
           items: [order],
           timestamp: new Date().toISOString(),
@@ -76,9 +82,14 @@ const MenuSelectionNew = () => {
       return;
     }
 
+    if (!responsibleName) {
+      toast.error("Por favor, inclua o nome do responsável");
+      return;
+    }
+
     const tableOrder: TableOrder = {
       id: uuidv4(),
-      tableId: searchParams.get("table") || "1",
+      tableId: tableParam || "1",
       responsibleName: responsibleName,
       items: currentOrders,
       timestamp: new Date().toISOString(),
@@ -96,12 +107,17 @@ const MenuSelectionNew = () => {
       timestamp: tableOrder.timestamp,
       responsibleName: tableOrder.responsibleName,
       status: "ocupado",
+      source: tableParam?.includes("tablecaixa") ? "Caixa" : "Mesa",
     });
+
+    // Update table status in firebase
+    updateOrderStatus(parseInt(tableOrder.tableId), "", "pending");
 
     console.log("Sending order to kitchen:", tableOrder);
 
     toast.success(`${currentOrders.length} itens enviados para a cozinha`);
 
+    window.location.href = window.location.href;
     // Reset form
     clearOrders();
     setResponsibleName("");
@@ -111,16 +127,6 @@ const MenuSelectionNew = () => {
     <OrderManagerProvider>
       <div className="container mx-auto px-3 sm:px-4 md:px-6 py-4 md:py-6">
         <div className="space-y-8">
-          <div className="flex items-center justify-between">
-            <Button
-              onClick={handleSendToKitchen}
-              disabled={currentOrders.length === 0}
-              className="bg-[#518426] hover:bg-[#518426]/90"
-            >
-              Enviar para Cozinha
-            </Button>
-          </div>
-
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
             <div className="lg:col-span-3 space-y-8">
               <MenuSection
@@ -144,13 +150,14 @@ const MenuSelectionNew = () => {
             </div>
             <div className="lg:col-span-1">
               <OrderSummaryNew
-                key={currentOrders.length}
+                key={`${currentOrders.length}-${orderHistory.length}`}
                 orderItems={currentOrders}
                 tableResponsible={responsibleName}
-                onTableResponsibleChange={setResponsibleName}
+                onTableResponsibleChange={handleResponsibleNameChange}
                 onRemoveItem={removeItem}
                 onSubmit={handleSendToKitchen}
                 orderHistory={orderHistory}
+                tableParam={tableParam}
               />
             </div>
           </div>

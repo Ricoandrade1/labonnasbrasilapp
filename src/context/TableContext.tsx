@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react'
 
 import { TableOrder, OrderItem } from '../types'
 
-type TableStatus = "available" | "occupied" | "closing"
+export type TableStatus = "available" | "occupied" | "closing"
 
 interface Table {
   id: number
@@ -20,6 +20,7 @@ interface TableContextType {
   updateOrderStatus: (tableId: number, orderId: string, status: TableOrder['status']) => void
   clearTable: (tableId: number) => void
   getTableOrders: (tableId: number) => OrderItem[]
+  setAllTablesAvailable: () => void
 }
 
 const TableContext = createContext<TableContextType | undefined>(undefined)
@@ -76,9 +77,12 @@ export const TableProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           // Check if all orders are completed
           const allCompleted = updatedOrders.every(order => order.status === 'completed')
           
+          // Check if there are any orders at all
+          const hasOrders = updatedOrders.length > 0;
+
           return {
             ...table,
-            status: allCompleted ? "available" : table.status,
+            status: allCompleted || !hasOrders ? "available" : table.status,
             orders: allCompleted ? [] : updatedOrders,
             totalAmount: allCompleted ? 0 : calculateTotalAmount(updatedOrders)
           }
@@ -109,13 +113,25 @@ export const TableProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return table?.orders.flatMap(order => order.items) || []
   }
 
+  const setAllTablesAvailable = () => {
+    setTables(prevTables => {
+      return prevTables.map(table => ({
+        ...table,
+        status: "available",
+        orders: [],
+        totalAmount: 0
+      }))
+    })
+  }
+
   return (
     <TableContext.Provider value={{
       tables,
       addOrdersToTable,
       updateOrderStatus,
       clearTable,
-      getTableOrders
+      getTableOrders,
+      setAllTablesAvailable
     }}>
       {children}
     </TableContext.Provider>
