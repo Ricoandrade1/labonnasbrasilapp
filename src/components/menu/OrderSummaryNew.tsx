@@ -63,7 +63,7 @@ export const OrderSummaryNew = ({
                 <p className="text-sm text-red-500">Por favor, inclua o nome do responsável</p>
               )}
               {tableResponsible && (
-                <p className="text-sm text-gray-500">Responsável: {tableResponsible} {responsibleNames.filter(name => name !== "N/A").length > 0 ? `(${responsibleNames.filter(name => name !== "N/A").join(", ")})` : ""}</p>
+                <p className="text-sm text-gray-500">Responsável: {tableResponsible.replace(/\s*\([^)]*\)/g, '')}</p>
               )}
             </div>
             
@@ -100,6 +100,7 @@ export const OrderSummaryNew = ({
             </div>
 
             <Button
+              type="button"
               onClick={onSubmit}
               className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-6"
             >
@@ -117,6 +118,7 @@ export const OrderSummaryNew = ({
           <div className="space-y-3">
             {orderHistory && orderHistory.map((order) => (
               <div key={order.id} className="space-y-2 border-b pb-2">
+                <p className="text-sm text-gray-600">Responsável: {order.responsibleName}</p>
                 {order.items.map((item) => (
                   <div key={item.id} className="flex justify-between items-center bg-gray-50 p-2 rounded-lg">
                     <div className="flex flex-col">

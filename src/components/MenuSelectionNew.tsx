@@ -17,9 +17,8 @@ const MenuSelectionNew = () => {
   const [searchParams] = useSearchParams();
   const { currentOrders, addItem, removeItem, updateQuantity, clearOrders, getTotalPrice } = useOrderManager();
   const [tables, setTables] = useState<any[]>([]);
-  const [_, setUpdate] = useState(0);
   const [responsibleName, setResponsibleName] = useState("");
-  const { addOrdersToTable, getTableOrders, updateOrderStatus } = useTable();
+  const { addOrdersToTable, getTableOrders, updateOrderStatus, clearTable, tables: tableContextTables } = useTable(); // Added clearTable and tables from context
   const [orderHistory, setOrderHistory] = useState<TableOrder[]>([]);
 
   const handleResponsibleNameChange = (value: string) => {
@@ -38,24 +37,31 @@ const MenuSelectionNew = () => {
 
     const fetchOrderHistory = () => {
       if (tableParam) {
-        const orders = getTableOrders(parseInt(tableParam));
-        console.log("MenuSelectionNew - fetchOrderHistory - orders", orders);
-        const tableOrders = orders.map(order => ({
-          id: uuidv4(),
+        const tableId = parseInt(tableParam);
+        const currentTable = tableContextTables.find(table => table.id === tableId); // Get table from context
+        if (currentTable && currentTable.status === "available") {
+          setOrderHistory([]); // Clear history if table is available
+    } else {
+      const currentTable = tableContextTables.find(table => table.id === tableId);
+      if (currentTable) {
+        const tableOrders = currentTable.orders.map(order => ({
+          id: order.id, // Use the order ID from the TableOrder
           tableId: tableParam,
-          responsibleName: "",
-          items: [order],
-          timestamp: new Date().toISOString(),
-          status: "completed",
-          total: order.price * order.quantity,
+          responsibleName: order.responsibleName, // Get responsibleName from TableOrder
+          items: order.items, // Use items from TableOrder
+          timestamp: order.timestamp,
+          status: order.status,
+          total: order.total,
         } as TableOrder));
         setOrderHistory(tableOrders);
       }
-    };
+    }
+  }
+};
 
     fetchTables();
     fetchOrderHistory();
-  }, [searchParams]);
+  }, [searchParams, tableContextTables]); // Added tableContextTables to dependency array
 
   const getItemQuantity = (itemId: string) => {
     const item = currentOrders.find((order) => order.id === itemId);
@@ -73,10 +79,11 @@ const MenuSelectionNew = () => {
         removeItem(item.id);
       }
     }
-    window.location.reload();
   };
 
   const handleSendToKitchen = async () => {
+    console.log("handleSendToKitchen - responsibleName:", responsibleName); // 1. Log responsibleName at the beginning
+
     if (currentOrders.length === 0) {
       toast.error("Por favor, selecione pelo menos um item");
       return;
@@ -90,18 +97,15 @@ const MenuSelectionNew = () => {
     const tableOrder: TableOrder = {
       id: uuidv4(),
       tableId: tableParam || "1",
-      responsibleName: responsibleName,
+      responsibleName: responsibleName, // Responsible name should be here
       items: currentOrders,
       timestamp: new Date().toISOString(),
       status: "pending",
       total: getTotalPrice(),
     };
-
     setOrderHistory(prev => [...prev, tableOrder]);
 
     addOrdersToTable(parseInt(tableOrder.tableId), [tableOrder]);
-    console.log("MenuSelectionNew - handleSendToKitchen - tableOrder.tableId", tableOrder.tableId);
-
     addOrder({
       tableId: tableOrder.tableId,
       products: tableOrder.items.map((item) => item.name),
@@ -116,12 +120,7 @@ const MenuSelectionNew = () => {
     // Update table status in firebase
     updateOrderStatus(parseInt(tableOrder.tableId), "", "pending");
 
-    console.log("Sending order to kitchen:", tableOrder);
-
     toast.success(`${currentOrders.length} itens enviados para a cozinha`);
-
-    setOrderHistory(prev => [...prev, {...tableOrder, responsibleName: responsibleName}]);
-    window.location.href = window.location.href;
     // Reset form
     clearOrders();
     setResponsibleName("");
