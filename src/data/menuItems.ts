@@ -19,6 +19,15 @@ export const menuItems: MenuItem[] = [
     image: "/images/picanha.jpg",
     available: true
   },
+  {
+    id: "r3",
+    name: "Especial Picanha",
+    description: "Picanha especial grelhada",
+    price: 15,
+    category: "rodizio",
+    image: "/images/picanha-especial.jpg", // Placeholder image path
+    available: true
+  },
   // Add more menu items...
 ];
 

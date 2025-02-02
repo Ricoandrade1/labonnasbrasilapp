@@ -10,12 +10,28 @@ import {
   CardTitle,
 } from "./ui/card";
 import PaymentDialog from "./PaymentDialog";
+import { collection, getDocs, getFirestore, query, where } from "firebase/firestore";
+import { db } from "../lib/firebase";
+import { menuItems } from "@/data/menuItems";
 
 interface OpenTable {
   id: string;
   tableNumber: string;
   total: number;
   status: "available" | "occupied";
+  products: string[];
+  responsibleName: string;
+  timestamp: string;
+}
+
+interface MenuItem {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  category: string;
+  image: string;
+  available: boolean;
 }
 
 interface OrderItem {
@@ -35,60 +51,75 @@ const PDVPanel = () => {
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = React.useState<boolean>(false);
 
 
-  const loadOpenTables = () => {
-    const storedOrders = JSON.parse(localStorage.getItem("orders") || "[]");
-    const storedOpenTables = JSON.parse(localStorage.getItem("openTables") || "[]");
-    console.log("openTables from localStorage:", storedOpenTables);
-
-    const tablesWithOrders = storedOpenTables.map((openTable: { tableNumber: string, status: "occupied" | "available" }) => {
-      const ordersForTable = storedOrders.filter((order: { tableId: string, status: string }) => order.tableId === openTable.tableNumber && order.status === "completed");
-      const total = ordersForTable.reduce((sum: number, order: { total: number }) => sum + order.total, 0);
-      return {
-        id: openTable.tableNumber,
-        tableNumber: openTable.tableNumber,
-        total: total,
-        status: openTable.status
-      }
-    });
-
-    setOpenTables(tablesWithOrders.filter(table => table.status === "occupied"));
+  const loadTablesFromFirebase = async () => {
+    try {
+      const dbInstance = getFirestore();
+      // Carregando mesas de 'statusdemesa' do Firebase
+      const tablesCollection = collection(dbInstance, "statusdemesa");
+      const occupiedTablesQuery = query(tablesCollection, where("status", "==", "ocupado"));
+      const tablesSnapshot = await getDocs(occupiedTablesQuery);
+      console.log("Tables snapshot:", tablesSnapshot);
+      console.log("Tables snapshot docs:", tablesSnapshot.docs);
+      const firebaseTables = tablesSnapshot.docs.map((doc) => {
+        const data = doc.data();
+        console.log("Firebase Document data:", JSON.stringify(data, null, 2)); // Console log para inspecionar os dados
+        return {
+          id: doc.id,
+          tableNumber: data.tableId, // Use tableId from firebase data
+          status: data.status,
+          total: data.total,
+          products: data.products, // Assuming products is an array
+          responsibleName: data.responsibleName,
+          timestamp: data.timestamp,
+        } as OpenTable;
+      });
+      console.log("Firebase tables data before setOpenTables:", firebaseTables);
+      setOpenTables(firebaseTables);
+      console.log("Open tables state:", openTables); // Verificando o estado após atualização
+    } catch (error) {
+      console.error("Erro ao carregar mesas ocupadas do Firebase:", error);
+      console.log("Firebase error details:", error);
+      // Lidar com o erro adequadamente
+    }
   };
 
-
   React.useEffect(() => {
-    loadOpenTables();
+    loadTablesFromFirebase();
   }, []);
 
   const handleTableSelect = (table: OpenTable) => {
     setSelectedTable(table);
-    loadOrderHistory(table.tableNumber);
+    setOrderHistoryFromFirebase(table);
   };
 
-  const loadOrderHistory = (tableNumber: string) => {
-    const storedOrders = JSON.parse(localStorage.getItem("orders") || "[]");
-    const ordersForTable = storedOrders.filter(
-      (order: { tableId: string; status: string; items: OrderItem[] }) =>
-        order.tableId === tableNumber && order.status === "completed" && order.items // Ensure items exist
-    );
-
-    if (ordersForTable.length > 0) {
-      // Assuming each order in ordersForTable has an 'items' array
-      const allItems = ordersForTable.reduce((items, order) => {
-        return items.concat(order.items);
-      }, []);
-      setOrderHistory(allItems);
-      updateTotal(allItems);
-    } else {
-      setOrderHistory([]);
-      setOrderTotal(0);
+ const setOrderHistoryFromFirebase = (table: OpenTable) => {
+    const orderItems = table.products.map(productName => {
+      console.log("Processing product:", productName);
+      const menuItem = menuItems.find(item => item.name.trim() === productName.trim());
+      if (menuItem) {
+        console.log("Found menu item:", menuItem.name, "Price:", menuItem.price);
+        return {
+          id: menuItem.id,
+          name: menuItem.name,
+          price: menuItem.price,
+          quantity: 1
+        };
+      } else {
+        console.log("Menu item not found for product:", productName);
+        console.log("Product name from Firebase:", productName);
+        return { name: productName, price: 0, quantity: 1 }; // Fallback if item not found
+      }
+    });
+    console.log("Order items:", orderItems);
+    setOrderHistory(orderItems as any || []);
+    if (orderItems.some(item => item.price === 0)) {
+      console.error("Alguns preços dos itens do pedido estão a 0!");
     }
+    // Recalculate total based on order items prices
+    const calculatedTotal = orderItems.reduce((sum, item) => sum + (item.price || 0), 0);
+    setOrderTotal(calculatedTotal);
   };
 
-
-  const updateTotal = (currentOrderItems: OrderItem[]) => {
-    const newTotal = currentOrderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    setOrderTotal(newTotal);
-  };
 
   const handlePaymentMethodSelect = (method: string) => {
     setPaymentMethod(method);
@@ -125,7 +156,7 @@ const PDVPanel = () => {
     setSelectedTable(null);
     setOrderHistory([]);
     setOrderTotal(0);
-    loadOpenTables(); // Refresh tables
+    loadTablesFromFirebase(); // Refresh tables
   };
 
 
@@ -142,16 +173,19 @@ const PDVPanel = () => {
         <div className="col-span-1">
           <h3>Mesas Ocupadas</h3>
           <ScrollArea className="h-[500px] rounded-md border p-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 mt-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
               {openTables.map((table) => (
-                <Button
+                <Card
                   key={table.id}
-                  variant="outline"
-                  className={`justify-start text-left ${selectedTable?.id === table.id ? "bg-blue-500 text-white" : ""}`}
+                  className={`relative group p-4 rounded-lg border transition-all duration-200 bg-rose-100 !bg-rose-100 border-rose-200 hover:bg-rose-200 hover:shadow-md`}
                   onClick={() => handleTableSelect(table)}
                 >
-                  Mesa {table.tableNumber} - Total: R$ {table.total.toFixed(2)}
-                </Button>
+                  <div className="flex flex-col items-center gap-2">
+                    <CardHeader>
+                      <CardTitle className="text-rose-700 text-lg font-semibold">Mesa {table.tableNumber}</CardTitle>
+                    </CardHeader>
+                  </div>
+                </Card>
               ))}
             </div>
           </ScrollArea>
@@ -162,24 +196,25 @@ const PDVPanel = () => {
           <div className="mb-4 p-4 border rounded-md">
             <h3>Histórico de Pedido da Mesa</h3>
             <ScrollArea className="h-[300px] rounded-md border p-2 mb-2">
-              {orderHistory.length === 0 ? (
-                <p>Nenhum pedido para esta mesa.</p>
-              ) : (
+              {selectedTable && orderHistory.length > 0 ? (
                 <ul>
-                  {orderHistory.map((item, index) => (
-                    <li key={index} className="flex items-center justify-between mb-1">
-                      <span>{item.name} x {item.quantity}</span>
-                      <span>R$ {(item.price * item.quantity).toFixed(2)}</span>
+                  {orderHistory.map((item: MenuItem | { name: string, price: number }, index) => (
+                    <li key={index} className="mb-1">
+                      <span>{item.name} (€{item.price.toFixed(2)})</span>
                     </li>
                   ))}
                 </ul>
+              ) : selectedTable ? (
+                <p>Nenhum pedido para esta mesa</p>
+              ) : (
+                <p>Selecione uma mesa para ver o pedido.</p>
               )}
             </ScrollArea>
           </div>
 
           {/* Total Display */}
           <div className="p-4 border rounded-md">
-            <h3>Total do Pedido: R$ {orderTotal.toFixed(2)}</h3>
+            <h3>Total do Pedido: € {orderTotal.toFixed(2)}</h3>
           </div>
           {selectedTable && (
           <div className="mt-4">
@@ -195,7 +230,7 @@ const PDVPanel = () => {
           </div>
           )}
         </div>
-        <PaymentDialog 
+        <PaymentDialog
           open={isPaymentDialogOpen}
           onOpenChange={setIsPaymentDialogOpen}
           paymentMethod={paymentMethod}

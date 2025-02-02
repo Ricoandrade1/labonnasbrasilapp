@@ -43,8 +43,14 @@ const addOrder = async (orderData: {
 }) => {
   console.log("addOrder - orderData", orderData);
   try {
-    const docRef = await addDoc(collection(db, "Pedidos"), orderData);
-    console.log("Document written with ID: ", docRef.id);
+    // Adiciona o pedido em 'Pedidos'
+    const pedidosRef = await addDoc(collection(db, "Pedidos"), orderData);
+    console.log("Pedido adicionado em Pedidos com ID: ", pedidosRef.id);
+
+    // Adiciona também em 'statusdemesa'
+    const statusMesaRef = await addDoc(collection(db, "statusdemesa"), orderData);
+    console.log("Pedido adicionado em statusdemesa com ID: ", statusMesaRef.id);
+
   } catch (e) {
     console.error("Error adding document: ", e);
   }

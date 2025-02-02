@@ -117,7 +117,11 @@ const Tables = () => {
             </div>
             <div>
               <p className="text-sm text-gray-500">Pedidos Ativos</p>
-              <p className="text-2xl font-bold text-gray-900">12</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {tables.reduce((totalActiveOrders, table) => {
+                  return totalActiveOrders + table.orders.length;
+                }, 0)}
+              </p>
             </div>
           </Card>
         </div>
