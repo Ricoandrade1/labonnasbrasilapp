@@ -23,9 +23,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
         <Link to="/settings" className="mb-2 p-2 hover:bg-gray-700 rounded" onClick={toggleSidebar}>
           Settings
         </Link>
+        <div className="p-4">
+          <ResetTables />
+        </div>
       </nav>
     </div>
   )
 }
+import ResetTables from "./ResetTables";
 
 export default Sidebar

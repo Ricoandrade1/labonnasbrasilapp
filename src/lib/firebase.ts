@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore, collection, addDoc, doc, getDocs } from "firebase/firestore";
+import { getFirestore, collection, addDoc, doc, getDocs, updateDoc, onSnapshot } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBJQl6t7LyOlAPhQ11UZCGqPv--4nfvoYs",
@@ -89,7 +89,10 @@ const getTables = async () => {
     const querySnapshot = await getDocs(collection(db, "Mesas"));
     const tables = querySnapshot.docs.map(doc => ({
       id: doc.id,
-      ...doc.data()
+      ...doc.data(),
+      status: "available" as "available",
+      orders: [],
+      totalAmount: 0
     }));
     return tables;
   } catch (e) {
@@ -97,6 +100,27 @@ const getTables = async () => {
     return [];
   }
 };
+
+const updateTableStatus = async (tableId: string, status: string) => {
+  try {
+    const tableRef = doc(db, "Mesas", tableId);
+    await updateDoc(tableRef, { status });
+    console.log(`Table ${tableId} status updated to ${status}`);
+  } catch (e) {
+    console.error("Error updating table status: ", e);
+  }
+};
+
+const onTablesChange = (callback: (tables: any[]) => void) => {
+  return onSnapshot(collection(db, "Mesas"), (snapshot) => {
+    const tables = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    callback(tables);
+  });
+};
+
 
 const clearOrders = async () => {
   try {
@@ -122,4 +146,4 @@ const clearTables = async () => {
   }
 };
 
-export { db, addTable, addOrder, addProduct, addTransaction, getTables, clearOrders, clearTables };
+export { db, addTable, addOrder, addProduct, addTransaction, getTables, clearOrders, clearTables, updateTableStatus, onTablesChange };
