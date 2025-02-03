@@ -56,10 +56,10 @@ const PDVPanel = () => {
       const dbInstance = getFirestore();
       // Carregando mesas de 'statusdemesa' do Firebase
       const tablesCollection = collection(dbInstance, "statusdemesa");
-      const occupiedTablesQuery = query(tablesCollection, where("status", "==", "ocupado"));
+      const occupiedTablesQuery = query(tablesCollection);
       const unsubscribe = onSnapshot(occupiedTablesQuery, (tablesSnapshot) => {
         console.log("Tables snapshot:", tablesSnapshot);
-        console.log("Tables snapshot metadata:", tablesSnapshot.metadata); // Log metadata
+        console.log("Tables snapshot metadata:", tablesSnapshot.metadata);
         console.log("Tables snapshot docs:", tablesSnapshot.docs);
         const firebaseTables = tablesSnapshot.docs.map((doc) => {
           const data = doc.data();
@@ -91,6 +91,7 @@ const PDVPanel = () => {
         const groupedTables = Array.from(tablesMap.values()).map(tables => tables[0]); // Use the first table in each group for display
         console.log("groupedTables:", JSON.stringify(groupedTables, null, 2));
         setOpenTables(groupedTables);
+        console.log("PDVPanel - loadTablesFromFirebase - setOpenTables:", groupedTables);
       }, (error) => {
         console.error("Erro ao ouvir atualizações do Firebase:", error);
         console.log("Firebase error details:", error);
@@ -151,7 +152,9 @@ const PDVPanel = () => {
         });
         console.log("Order items with prices:", orderItems);
         setOrderHistory(orderItems);
-        setOrderTotal(total); // Set the aggregated total
+        const calculatedTotal = orderItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+        setOrderTotal(calculatedTotal);
+        console.log("PDVPanel - setOrderHistoryFromFirebase - setOrderHistory:", orderItems, "calculatedTotal:", calculatedTotal);
       })
   };
 
