@@ -30,7 +30,7 @@ export const menuItems: MenuItem[] = [
   },
   {
     id: "d1",
-    name: "Diário 8€",
+    name: "Diária 8€",
     description: "Buffet sem churrasco - 1 bebida - sobremesa e café",
     price: 8,
     category: "diaria",
@@ -39,7 +39,7 @@ export const menuItems: MenuItem[] = [
   },
   {
     id: "d2",
-    name: "Diário 9€",
+    name: "Diária 9€",
     description: "Buffet sem churrasco - 1 corte de maminha e chouriço - 1 bebida - sobremesa e café",
     price: 9,
     category: "diaria",
@@ -48,7 +48,7 @@ export const menuItems: MenuItem[] = [
   },
   {
     id: "d3",
-    name: "Diário 10€",
+    name: "Diária 10€",
     description: "Buffet sem churrasco - 1 corte de maminha e chouriço - 1 bebida - sobremesa e café",
     price: 10,
     category: "diaria",
