@@ -4,7 +4,7 @@ import { Input } from "../ui/input";
 import { Trash2, User } from "lucide-react";
 import { OrderItem, TableOrder } from "../../types";
 import React, { useState, useEffect } from "react";
-import { db } from "@/lib/firebase";
+// import { db } from '../lib/firebase';
 import { collection, getDocs, query, where } from "firebase/firestore";
 
 interface OrderSummaryProps {
@@ -40,6 +40,17 @@ export const OrderSummaryNew = ({
     const totalPrice = orderItems.reduce((total, item) => total + (item.price * item.quantity), 0);
     return totalPrice;
   };
+
+  console.log("OrderSummaryNew - getTotalPrice - orderItems", orderItems);
+
+  const calculateOrderTotal = (items: OrderItem[]) => {
+    if (!items || items === null || items === undefined || items.length === 0) {
+      return 0;
+    }
+    return items.reduce((total, item) => total + (item.price * item.quantity), 0);
+  };
+
+  const grandTotal = orderHistory.reduce((total, order) => total + calculateOrderTotal(order.items), 0);
 
   return (
     <div className="space-y-4">
@@ -93,13 +104,6 @@ export const OrderSummaryNew = ({
               </div>
             </div>
 
-            <div className="border-t pt-4">
-              <div className="flex justify-between items-center text-lg font-bold">
-                <span>Total</span>
-                <span className="text-green-600">€{getTotalPrice().toFixed(2)}</span>
-              </div>
-            </div>
-
             <Button
               type="button"
               onClick={onSubmit}
@@ -117,19 +121,24 @@ export const OrderSummaryNew = ({
         </CardHeader>
         <CardContent className="p-4">
           <div className="space-y-3">
-            {orderHistory && orderHistory.map((order) => (
-              <div key={order.id} className="space-y-2 border-b pb-2">
-                <p className="text-sm text-gray-600">Responsável: {order.responsibleName}</p>
-                {order.items.map((item) => (
-                  <div key={item.id} className="flex justify-between items-center bg-gray-50 p-2 rounded-lg">
-                    <div className="flex flex-col">
-                      <span className="font-medium">{item.name}</span>
-                      <span className="text-sm text-gray-500">Qtd: {item.quantity}</span>
+            <div className="border-b pb-2">
+              {orderHistory && orderHistory.map((order) => (
+                <div key={order.id} className="space-y-2 pb-2">
+                  <p className="text-sm text-gray-600">Responsável: {order.responsibleName}</p>
+                  {order.items.map((item) => (
+                    <div key={item.id} className="flex justify-between items-center bg-gray-50 p-2 rounded-lg">
+                      <div className="flex flex-col">
+                        <span className="font-medium">{item.name}</span>
+                        <span className="text-sm text-gray-500">Qtd: {item.quantity}</span>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            ))}
+                  ))}
+                </div>
+              ))}
+            </div>
+            <div className="pt-2">
+              <p className="text-sm font-semibold text-gray-700">Total Geral: €{grandTotal.toFixed(2)}</p>
+            </div>
           </div>
         </CardContent>
       </Card>

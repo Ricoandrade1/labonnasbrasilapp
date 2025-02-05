@@ -64,6 +64,8 @@ const MenuSelectionNew = () => {
     fetchOrderHistory();
   }, [searchParams, tableContextTables]); // Added tableContextTables to dependency array
 
+  console.log("MenuSelectionNew - useEffect - currentOrders", currentOrders);
+
   const getItemQuantity = (itemId: string) => {
     const item = currentOrders.find((order) => order.id === itemId);
     return item?.quantity || 0;
@@ -154,7 +156,7 @@ const MenuSelectionNew = () => {
             </div>
             <div className="lg:col-span-1">
               <OrderSummaryNew
-                key={`${currentOrders.length}-${orderHistory.length}`}
+                key={currentOrders.length}
                 orderItems={currentOrders}
                 tableResponsible={responsibleName}
                 onTableResponsibleChange={handleResponsibleNameChange}
