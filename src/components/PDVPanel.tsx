@@ -49,6 +49,7 @@ const PDVPanel = () => {
   const [orderTotal, setOrderTotal] = React.useState<number>(0);
   const [paymentMethod, setPaymentMethod] = React.useState<string | null>(null);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = React.useState<boolean>(false);
+  const [unsubscribeOrderHistory, setUnsubscribeOrderHistory] = React.useState<() => void | undefined>();
 
 
   const loadTablesFromFirebase = async () => {
@@ -58,14 +59,8 @@ const PDVPanel = () => {
       const tablesCollection = collection(dbInstance, "statusdemesa");
       const occupiedTablesQuery = query(tablesCollection);
       const unsubscribe = onSnapshot(occupiedTablesQuery, (tablesSnapshot) => {
-        console.log("Tables snapshot:", tablesSnapshot);
-        console.log("Tables snapshot metadata:", tablesSnapshot.metadata);
-        console.log("Tables snapshot docs:", tablesSnapshot.docs);
         const firebaseTables = tablesSnapshot.docs.map((doc) => {
           const data = doc.data();
-          console.log("Firebase Document ID:", doc.id); // Log document ID
-          console.log("Firebase Document Metadata:", doc.metadata); // Log document metadata
-          console.log("Firebase Document data:", JSON.stringify(data, null, 2)); // Console log para inspecionar os dados
           return {
             id: doc.id,
             tableNumber: data.tableId, // Use tableId from firebase data
@@ -112,51 +107,74 @@ const PDVPanel = () => {
 
   const handleTableSelect = (table: OpenTable) => {
     setSelectedTable(table);
-    setOrderHistoryFromFirebase(table.tableNumber); // Pass tableNumber instead of the whole table object
+    setOrderHistoryFromFirebase(table.tableNumber);
   };
 
   const setOrderHistoryFromFirebase = (tableNumber: string) => {
-    console.log("Setting order history from firebase for table number:", tableNumber);
+    if (unsubscribeOrderHistory) {
+      unsubscribeOrderHistory(); // Unsubscribe from previous listener
+    }
+
+    if (!tableNumber) {
+      setOrderHistory([]);
+      setOrderTotal(0);
+      return;
+    }
+
     const dbInstance = getFirestore();
     const tablesCollection = collection(dbInstance, "statusdemesa");
     const occupiedTablesQuery = query(tablesCollection, where("tableId", "==", tableNumber));
 
-    getDocs(occupiedTablesQuery)
-      .then((querySnapshot) => {
-        let allProducts: string[] = [];
-        let total = 0;
-        querySnapshot.forEach((doc) => {
-          const data = doc.data();
-          console.log("Document data for order history:", data); // Log document data
-          const products = data.products as string[];
-          if (products && Array.isArray(products)) {
-            allProducts = allProducts.concat(products);
-          }
-          total += data.total || 0;
-        });
+    const unsubscribe = onSnapshot(occupiedTablesQuery, (querySnapshot) => {
+      console.log("onSnapshot callback triggered for table:", tableNumber); // LOG 1: onSnapshot triggered
+      console.log("querySnapshot data:", querySnapshot); // LOG 2: querySnapshot data
 
-        console.log("All products for table:", tableNumber, allProducts);
-        const orderItems = allProducts.map(productName => {
-          // Debug log to compare product names
-          console.log("Firebase product name:", productName);
-          const menuItem = menuItems.find(item => {
-            // Debug log for each menu item name
-            console.log("Menu item name:", item.name);
-            return item.name.trim().toLowerCase() === productName.trim().toLowerCase()
-          });
-          return {
-            name: productName,
-            price: menuItem ? menuItem.price : 0, // Get price from menuItems or default to 0
-            quantity: 1
-          };
-        });
-        console.log("Order items with prices:", orderItems);
-        setOrderHistory(orderItems);
-        const calculatedTotal = orderItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
-        setOrderTotal(calculatedTotal);
-        console.log("PDVPanel - setOrderHistoryFromFirebase - setOrderHistory:", orderItems, "calculatedTotal:", calculatedTotal);
-      })
+      let allProducts: string[] = [];
+      let total = 0;
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        const products = data.products as string[];
+        if (products && Array.isArray(products)) {
+          allProducts = allProducts.concat(products);
+        }
+      });
+
+      console.log("allProducts array:", allProducts); // LOG 3: allProducts array
+
+      const productCounts: { [name: string]: number } = {};
+      allProducts.forEach(productName => {
+        productCounts[productName] = (productCounts[productName] || 0) + 1;
+      });
+
+      const orderItems: OrderItem[] = Object.entries(productCounts).map(([productName, quantity]) => {
+        const menuItem = menuItems.find(item =>
+          item.name.trim().toLowerCase() === productName.trim().toLowerCase()
+        );
+        return {
+          name: productName,
+          price: menuItem ? menuItem.price : 0,
+          quantity: quantity,
+        };
+      });
+      console.log("orderItems array:", orderItems); // LOG 4: orderItems array
+      setOrderHistory(orderItems);
+      // Recalculate total based on quantity
+      const calculatedTotal = orderItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+      console.log("calculatedTotal:", calculatedTotal); // LOG 5: calculatedTotal
+       setOrderTotal(calculatedTotal);
+    }, (error) => {
+      console.error("Erro ao ouvir atualizações do Firebase:", error);
+    });
+    setUnsubscribeOrderHistory(() => unsubscribe);
   };
+
+  React.useEffect(() => {
+    return () => {
+      if (unsubscribeOrderHistory) {
+        unsubscribeOrderHistory(); // Unsubscribe when component unmounts
+      }
+    };
+  }, [unsubscribeOrderHistory]);
 
   const handlePaymentMethodSelect = (method: string) => {
     setPaymentMethod(method);
@@ -216,9 +234,9 @@ const PDVPanel = () => {
             <ScrollArea className="h-[300px] rounded-md border p-2 mb-2">
               {selectedTable && orderHistory.length > 0 ? (
                 <ul>
-                  {orderHistory.map((item: MenuItem | { name: string, price: number }, index) => (
+                  {orderHistory.map((item: OrderItem, index) => (
                     <li key={index} className="mb-1">
-                      <span>{item.name} (€{item.price.toFixed(2)})</span>
+                      <span>{item.name} (x{item.quantity}) - €{(item.price * item.quantity).toFixed(2)}</span>
                     </li>
                   ))}
                 </ul>
