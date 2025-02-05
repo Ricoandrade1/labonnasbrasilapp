@@ -1,5 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore, collection, addDoc, doc, getDocs, updateDoc, onSnapshot } from "firebase/firestore";
+import { getAuth } from "firebase/auth"; // Import getAuth
 
 const firebaseConfig = {
   apiKey: "AIzaSyBJQl6t7LyOlAPhQ11UZCGqPv--4nfvoYs",
@@ -12,6 +13,7 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
+const auth = getAuth(app); // Inicializar auth
 const db = getFirestore(app);
 
 const addTable = async (tableData: {
@@ -149,4 +151,4 @@ const clearTables = async () => {
   }
 };
 
-export { db, addTable, addOrder, addProduct, addTransaction, getTables, clearOrders, clearTables, updateTableStatus, onTablesChange };
+export { auth, db, addTable, addOrder, addProduct, addTransaction, getTables, clearOrders, clearTables, updateTableStatus, onTablesChange }; // Export auth

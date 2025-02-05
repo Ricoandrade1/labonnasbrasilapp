@@ -9,9 +9,10 @@ import { menuItems } from "../data/menu";
 import { MenuItem, TableOrder } from "../types";
 import { v4 as uuidv4 } from "uuid";
 import { addOrder, getTables } from "../lib/firebase";
-import { OrderManagerProvider,  } from "./OrderManager";
-import  useOrderManager  from "./OrderManager";
-import { useTable } from "@/context/TableContext";
+import { OrderManagerProvider } from "./OrderManager";
+import useOrderManager from "./OrderManager";
+import { useTable } from '../context/TableContext'; // Corrected import path
+import { useAuth } from '../context/AuthContext'; // Corrected import path
 
 const MenuSelectionNew = () => {
   console.log("MenuSelectionNew component rendered");
@@ -21,6 +22,7 @@ const MenuSelectionNew = () => {
   const [responsibleName, setResponsibleName] = useState("");
   const { addOrdersToTable, getTableOrders, updateOrderStatus, clearTable, tables: tableContextTables } = useTable(); // Added clearTable and tables from context
   const [orderHistory, setOrderHistory] = useState<TableOrder[]>([]);
+  const { user } = useAuth(); // Get auth context and user
 
   const handleResponsibleNameChange = (value: string) => {
     console.log("responsibleName changed to:", value);
@@ -108,7 +110,7 @@ const MenuSelectionNew = () => {
     };
     setOrderHistory(prev => [...prev, tableOrder]);
 
-    addOrdersToTable(parseInt(tableOrder.tableId), [tableOrder]);
+    addOrdersToTable(parseInt(tableOrder.tableId), [tableOrder] , user); // Pass user object here
     addOrder({
       tableId: tableOrder.tableId,
       products: tableOrder.items.map((item) => item.name),

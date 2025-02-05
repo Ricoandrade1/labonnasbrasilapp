@@ -19,9 +19,9 @@ function App() {
         <SidebarMenu />
         <Routes>
           <Route path="/login" element={<Login />} />
-          <Route path="/" element={<TableProvider><Tables /></TableProvider>} />
-          <Route path="/tablecaixa" element={<TableProvider><TableCaixa /></TableProvider>} />
           <Route path="/tables" element={<TableProvider><Tables /></TableProvider>} />
+          <Route path="/tablecaixa" element={<TableProvider><TableCaixa /></TableProvider>} />
+          <Route path="/" element={<TableProvider><Tables /></TableProvider>} />
           <Route path="/menu" element={<TableProvider><MenuSelection /></TableProvider>} />
           <Route path="/caixa" element={<Cashier />} />
           <Route path="/gerente" element={<div>Página do Gerente</div>} />

@@ -1,7 +1,8 @@
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/context/AuthContext";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { useAuth } from "../context/AuthContext"; // Import correto
+import FirebaseClearButton from '../components/FirebaseClearButton'; // Import correto
+import { Button } from "../components/ui/button"; // Import correto
+import { Card } from "../components/ui/card"; // Import correto
 import { LogOut, Users, Clock, Coffee } from "lucide-react";
 import { useTable } from "@/context/TableContext";
 import { TableStatus } from "@/context/TableContext";
@@ -120,7 +121,12 @@ const Tables = () => {
               <p className="text-sm text-gray-500">Pedidos Ativos</p>
               <p className="text-2xl font-bold text-gray-900">
                 {tables.reduce((totalActiveOrders, table) => {
-                  return totalActiveOrders + table.orders.length;
+                  table.orders.forEach(order => {
+                    if (order.status !== 'completed') {
+                      totalActiveOrders++;
+                    }
+                  });
+                  return totalActiveOrders;
                 }, 0)}
               </p>
             </div>
@@ -166,8 +172,10 @@ const Tables = () => {
           </div>
         </div>
       </div>
-      <div className="flex justify-center">
+      <div className="flex justify-center space-x-4">
         <Button onClick={() => setAllTablesAvailable()}>Set All Tables Available</Button>
+        <Button onClick={() => { localStorage.clear(); window.location.reload(); }}>Limpar Dados Locais</Button>
+        <FirebaseClearButton />
       </div>
     </div>
   );

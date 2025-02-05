@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { TableOrder, OrderItem } from '../types'
-import { clearTables } from '../lib/firebase';
+import { clearTables, addOrder } from '../lib/firebase';
+import { useAuth, AuthContextType, User } from './AuthContext'; // Importar useAuth e User
 
 export type TableStatus = "available" | "occupied" | "closing"
 
@@ -16,7 +17,7 @@ interface Table {
 
 interface TableContextType {
   tables: Table[]
-  addOrdersToTable: (tableId: number, orders: TableOrder[]) => void
+  addOrdersToTable: (tableId: number, orders: TableOrder[], user: User | null) => void
   updateOrderStatus: (tableId: number, orderId: string, status: TableOrder['status']) => void
   clearTable: (tableId: number) => void
   getTableOrders: (tableId: number) => OrderItem[]
@@ -46,26 +47,44 @@ export const TableProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     localStorage.setItem('tables', JSON.stringify(tables))
   }, [tables])
 
+  const auth = useAuth(); // Get auth context
   const calculateTotalAmount = (orders: TableOrder[]) => {
     return orders.reduce((total, order) => total + order.total, 0)
   }
 
-  const addOrdersToTable = (tableId: number, newOrders: TableOrder[]) => {
+  const addOrdersToTable = (tableId: number, newOrders: TableOrder[], user: User | null) => {
+
     setTables(prevTables => {
       return prevTables.map(table => {
         if (table.id === tableId) {
-          const updatedOrders = [...table.orders, ...newOrders]
+          const updatedOrders = [...table.orders, ...newOrders];
+          
+          // Chamar addOrder para cada novo pedido
+          newOrders.forEach(async (order) => {
+            const products = order.items.map(item => item.id); // Extrair product IDs
+            await addOrder({
+              tableId: String(tableId), // tableId precisa ser string para addOrder
+              products: products,
+              total: order.total,
+              paymentMethod: 'cash', // ⚠️ Valor padrão - precisa ser investigado
+              timestamp: new Date().toISOString(),
+              responsibleName: user?.name || 'Unknown User', // Usar nome do usuário logado ou 'Unknown User'
+              status: 'pending',
+              source: 'web',
+            });
+          });
+
           return {
             ...table,
             status: "occupied",
             orders: updatedOrders,
             totalAmount: calculateTotalAmount(updatedOrders)
-          }
+          };
         }
-        return table
-      })
-    })
-  }
+        return table;
+      });
+    });
+  };
 
   const updateOrderStatus = (tableId: number, orderId: string, newStatus: TableOrder['status']) => {
     setTables(prevTables => {
