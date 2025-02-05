@@ -14,6 +14,7 @@ import  useOrderManager  from "./OrderManager";
 import { useTable } from "@/context/TableContext";
 
 const MenuSelectionNew = () => {
+  console.log("MenuSelectionNew component rendered");
   const [searchParams] = useSearchParams();
   const { currentOrders, addItem, removeItem, updateQuantity, clearOrders, getTotalPrice } = useOrderManager();
   const [tables, setTables] = useState<any[]>([]);

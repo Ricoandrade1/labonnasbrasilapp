@@ -8,6 +8,7 @@ import { TableStatus } from "@/context/TableContext";
 import { useEffect, useState } from "react";
 
 const Tables = () => {
+  console.log("Tables component rendered");
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { tables, updateOrderStatus, setAllTablesAvailable, forceUpdateTables } = useTable();

@@ -26,6 +26,7 @@ export const OrderSummaryNew = ({
   orderHistory,
   tableParam
 }: OrderSummaryProps) => {
+  console.log("OrderSummaryNew component rendered");
   const [responsibleNames, setResponsibleNames] = useState<string[]>([]);
 
   useEffect(() => {
@@ -69,9 +70,9 @@ export const OrderSummaryNew = ({
             
             <div className="space-y-3">
               <h3 className="font-medium text-sm text-gray-700">Itens do Pedido</h3>
-              <div key={orderItems.length}>
+              <div key={orderItems.length} >
                 {orderItems && orderItems.map((item) => (
-                  <div key={item.id} className="flex justify-between items-center bg-gray-50 p-2 rounded-lg">
+                  <div key={`${item.id}-${item.quantity}`} className="flex justify-between items-center bg-gray-50 p-2 rounded-lg">
                     <div className="flex items-center gap-2">
                       <Button
                         variant="ghost"
