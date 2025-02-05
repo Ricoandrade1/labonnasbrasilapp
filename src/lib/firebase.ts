@@ -22,7 +22,10 @@ const addTable = async (tableData: {
   server?: string;
 }) => {
   try {
-    const docRef = await addDoc(collection(db, "Mesas"), tableData);
+    const docRef = await addDoc(collection(db, "Mesas"), {
+      ...tableData,
+      orders: []
+    });
     console.log("Document written with ID: ", docRef.id);
     return docRef.id;
   } catch (e) {
