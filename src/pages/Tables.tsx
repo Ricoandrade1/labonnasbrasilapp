@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext"; // Import correto
-import FirebaseClearButton from '../components/FirebaseClearButton'; // Import correto
+import FirebaseClearButton from '../components/FirebaseClearButton.tsx'; // Import correto
 import { Button } from "../components/ui/button"; // Import correto
 import { Card } from "../components/ui/card"; // Import correto
 import { LogOut, Users, Clock, Coffee } from "lucide-react";
@@ -109,7 +109,7 @@ const Tables = () => {
             </div>
             <div>
               <p className="text-sm text-gray-500">Tempo Médio</p>
-              <p className="text-2xl font-bold text-gray-900">45 min</p>
+              <p className="text-2xl font-bold text-gray-900">-</p>
             </div>
           </Card>
 

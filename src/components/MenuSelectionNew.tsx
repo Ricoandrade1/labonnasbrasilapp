@@ -110,7 +110,7 @@ const MenuSelectionNew = () => {
     };
     setOrderHistory(prev => [...prev, tableOrder]);
 
-    addOrdersToTable(parseInt(tableOrder.tableId), [tableOrder] , user); // Pass user object here
+    // addOrdersToTable(parseInt(tableOrder.tableId), [tableOrder] , user); // Pass user object here
     addOrder({
       tableId: tableOrder.tableId,
       products: tableOrder.items.map((item) => item.name),
