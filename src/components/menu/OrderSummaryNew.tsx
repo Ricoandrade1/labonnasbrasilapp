@@ -54,7 +54,7 @@ export const OrderSummaryNew = ({
 
   return (
     <div className="space-y-4">
-      <Card className="sticky top-4 border-0 shadow-lg bg-white/70 backdrop-blur-sm">
+      <Card className="mt-4 border-0 shadow-lg bg-white/70 backdrop-blur-sm">
         <CardHeader className="border-b">
           <CardTitle className="text-xl font-semibold">Resumo do Pedido</CardTitle>
         </CardHeader>
@@ -106,7 +106,13 @@ export const OrderSummaryNew = ({
 
             <Button
               type="button"
-              onClick={onSubmit}
+              onClick={() => {
+                if (!tableResponsible) {
+                  alert("Por favor, introduza o nome do responsável antes de enviar o pedido.");
+                  return;
+                }
+                onSubmit();
+              }}
               className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-6"
             >
               Enviar para Cozinha
@@ -115,7 +121,7 @@ export const OrderSummaryNew = ({
         </CardContent>
       </Card>
 
-      <Card className="border-0 shadow-lg bg-white/70 backdrop-blur-sm">
+      <Card className="mt-8 border-0 shadow-lg bg-white/70 backdrop-blur-sm">
         <CardHeader className="border-b">
           <CardTitle className="text-xl font-semibold">Histórico de Pedidos</CardTitle>
         </CardHeader>
