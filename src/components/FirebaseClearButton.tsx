@@ -2,7 +2,7 @@ import React from 'react';
 import { Button } from './ui/button';
 import { auth, db } from '../lib/firebase';
 import { signOut } from 'firebase/auth';
-import { collection, deleteDoc, getDocs } from 'firebase/firestore';
+import { collection, deleteDoc, getDocs, writeBatch } from 'firebase/firestore';
 
 const FirebaseClearButton = () => {
     const handleClearFirebase = async () => {
@@ -11,22 +11,26 @@ const FirebaseClearButton = () => {
         }
 
         try {
-            const collectionsToDelete = ["orders", "tables", "menu", "menu_items", "categories"];
+            const collectionsToDelete = ["Pedidos", "statusdemesa"];
 
             for (const collectionName of collectionsToDelete) {
+                const batch = writeBatch(db);
                 const querySnapshot = await getDocs(collection(db, collectionName));
+
                 querySnapshot.forEach(doc => {
-                    deleteDoc(doc.ref);
+                    batch.delete(doc.ref);
                 });
-                console.log(`Collection ${collectionName} cleared`);
+
+                await batch.commit();
+                console.log(`Collection ${collectionName} cleared using batch delete`);
             }
 
             alert("Dados do Firebase limpos com sucesso!");
             window.location.reload();
 
         } catch (error) {
-            console.error("Erro ao limpar o Firebase:", error);
-            alert("Erro ao limpar o Firebase.");
+            console.error("Erro geral ao limpar o Firebase:", error);
+            alert("Erro geral ao limpar o Firebase. Veja o console para mais detalhes.");
         }
     };
 
