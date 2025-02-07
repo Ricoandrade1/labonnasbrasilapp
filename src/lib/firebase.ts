@@ -1,6 +1,7 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore, collection, addDoc, doc, getDocs, updateDoc, onSnapshot } from "firebase/firestore";
+import { getFirestore, collection, addDoc, doc, getDocs, updateDoc, onSnapshot, deleteDoc } from "firebase/firestore";
 import { getAuth } from "firebase/auth"; // Import getAuth
+import { TableStatus } from "@/context/TableContext";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBJQl6t7LyOlAPhQ11UZCGqPv--4nfvoYs",
@@ -91,17 +92,18 @@ const addTransaction = async (transactionData: {
 
 const getTables = async () => {
   try {
-    const querySnapshot = await getDocs(collection(db, "Mesas"));
+    const querySnapshot = await getDocs(collection(db, "table"));
     const tables = querySnapshot.docs.map(doc => ({
-      id: doc.id,
+      id: Number(doc.id),
       ...doc.data(),
-      status: "available" as "available",
+      status: Math.random() < 0.5 ? "available" : "occupied" as TableStatus,
       orders: [],
       totalAmount: 0
     }));
     return tables;
   } catch (e) {
     console.error("Error getting documents: ", e);
+    console.error("Error details:", e);
     return [];
   }
 };
@@ -117,12 +119,16 @@ const updateTableStatus = async (tableId: string, status: string) => {
 };
 
 const onTablesChange = (callback: (tables: any[]) => void) => {
-  return onSnapshot(collection(db, "Mesas"), (snapshot) => {
-    const tables = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
-    callback(tables);
+  return onSnapshot(collection(db, "table"), (snapshot) => {
+    try {
+      const tables = snapshot.docs.map(doc => ({
+        id: Number(doc.id),
+        ...doc.data()
+      }));
+      callback(tables);
+    } catch (error) {
+      console.error("Error fetching tables:", error);
+    }
   });
 };
 
@@ -141,9 +147,10 @@ const clearOrders = async () => {
 
 const clearTables = async () => {
   try {
-    const querySnapshot = await getDocs(collection(db, "Mesas"));
-    for (const doc of querySnapshot.docs) {
-      await (doc as any).ref.delete();
+    const querySnapshot = await getDocs(collection(db, "table"));
+    for (const docSnapshot of querySnapshot.docs) {
+      const docRef = doc(collection(db, "table"), docSnapshot.id);
+      await deleteDoc(docRef);
     }
     console.log("All tables cleared from database");
   } catch (e) {
@@ -151,4 +158,4 @@ const clearTables = async () => {
   }
 };
 
-export { auth, db, addTable, addOrder, addProduct, addTransaction, getTables, clearOrders, clearTables, updateTableStatus, onTablesChange }; // Export auth
+export { auth, db, addTable, addOrder, addProduct, addTransaction, getTables, clearOrders, clearTables, updateTableStatus, onTablesChange, getDocs, collection, deleteDoc }; // Export auth

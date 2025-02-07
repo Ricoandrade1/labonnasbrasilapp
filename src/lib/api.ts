@@ -1,87 +1,113 @@
-import { MenuItem } from "../types"
+import supabase from "./supabaseClient";
 
-// Simulating an API delay
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
-// In-memory storage
-let menuItems: MenuItem[] = [
-  { 
-    id: "1", 
-    name: "Rodízio de Maminha", 
-    price: 14, 
-    category: "rodizio",
-    description: "Todos os dias - Buffet livre - maminha chourriço e frango - sobremesa livre"
-  },
-  { 
-    id: "2", 
-    name: "Rodízio de Picanha", 
-    price: 19, 
-    category: "rodizio",
-    description: "Buffet livre - picanha - maminha chourriço e frango - sobremesa livre"
-  },
-  { 
-    id: "3", 
-    name: "Especial Picanha", 
-    price: 26, 
-    category: "rodizio",
-    description: "Buffet livre - picanha - maminha chourriço e frango - sobremesa livre - bebida incluída"
-  },
-  { 
-    id: "4", 
-    name: "Diária", 
-    price: 8, 
-    category: "diaria",
-    description: "Seg a Sex - buffet sem churrasco - 1 bebida - sobremesa e café"
-  },
-  { 
-    id: "5", 
-    name: "Diária", 
-    price: 9, 
-    category: "diaria",
-    description: "Seg a Sex - buffet sem churrasco - 1 corte de maminha e chouriço - 1 bebida sobremesa e café"
-  },
-  { 
-    id: "6", 
-    name: "Diária", 
-    price: 10, 
-    category: "diaria",
-    description: "Seg a Sex - buffet sem churrasco - 1 corte de maminha e chouriço - 1 bebida sobremesa e café"
+export const clearSupabaseTables = async () => {
+  const { error } = await supabase
+    .from('tables')
+    .delete()
+    .neq('id', 0); // Evita deletar a mesa com ID 0 (se existir)
+
+  if (error) {
+    console.error("Error clearing tables:", error);
+  } else {
+    console.log("Successfully cleared all tables in Supabase");
   }
-]
+};
 
-let bebidas: MenuItem[] = [
-  { id: "b1", name: "Coca-Cola", price: 3, category: "bebida" },
-  { id: "b2", name: "Água Mineral", price: 2, category: "bebida" },
-  { id: "b3", name: "Cerveja", price: 4, category: "bebida" },
-  { id: "b4", name: "Suco Natural", price: 3.5, category: "bebida" },
-  { id: "b5", name: "Vinho Tinto", price: 15, category: "bebida" },
-  { id: "b6", name: "Refrigerante", price: 3, category: "bebida" }
-]
+import { OrderItem } from "../types";
 
-export const api = {
-  getMenuItems: async () => {
-    await delay(500) // Simulate network delay
-    return [...menuItems]
-  },
+export const addSupabaseOrder = async (item: OrderItem, { tableId, products, total, paymentMethod, timestamp, responsibleName, status, source }: { tableId: string, products: string, total: number, paymentMethod: string, timestamp: string, responsibleName: string, status: string, source: string }) => {
+  console.log("Adding order to Supabase:", { tableId, products, total, paymentMethod, timestamp, responsibleName, status, source, item });
+  const { data, error } = await supabase
+    .from('orders')
+    .insert([
+      { 
+        tableId, 
+        products, 
+        total, 
+        paymentMethod, 
+        timestamp, 
+        responsibleName, 
+        status, 
+        source,
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        category: item.category,
+        description: item.description,
+        includes: item.includes,
+        daysAvailable: item.daysAvailable,
+        reportEnabled: item.reportEnabled,
+        editablePrice: item.editablePrice,
+        quantity: item.quantity
+      }
+    ])
 
-  getBebidas: async () => {
-    await delay(500)
-    return [...bebidas]
-  },
-
-  updateMenuItem: async (id: string, updates: Partial<MenuItem>) => {
-    await delay(300)
-    menuItems = menuItems.map(item => 
-      item.id === id ? { ...item, ...updates } : item
-    )
-    return menuItems.find(item => item.id === id)
-  },
-
-  updateBebida: async (id: string, updates: Partial<MenuItem>) => {
-    await delay(300)
-    bebidas = bebidas.map(item => 
-      item.id === id ? { ...item, ...updates } : item
-    )
-    return bebidas.find(item => item.id === id)
+  if (error) {
+    console.error("Error adding order:", error);
+  } else {
+    console.log("Successfully added order to Supabase");
   }
-}
+};
+
+export const onSupabaseTablesChange = (callback: (tables: any[]) => void) => {
+  const channel = supabase.channel('tables_changes');
+
+  channel.on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tables' }, payload => {
+      console.log('Change received!', payload)
+      supabase
+        .from('tables')
+        .select('*')
+        .then(({ data, error }) => {
+          if (error) {
+            console.error("Error fetching tables:", error);
+          } else {
+            callback(data || []);
+          }
+        });
+    })
+    .subscribe()
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+};
+
+export const updateSupabaseTable = async (tableId: number, newStatus: string) => {
+  const { data, error } = await supabase
+    .from('tables')
+    .update({ status: newStatus })
+    .eq('id', tableId)
+
+  if (error) {
+    console.error("Error updating table:", error);
+  } else {
+    console.log("Successfully updated table in Supabase");
+  }
+};
+
+export const updateSupabaseOrder = async (orderId: string, newStatus: string) => {
+  const { data, error } = await supabase
+    .from('orders')
+    .update({ status: newStatus })
+    .eq('id', orderId)
+
+  if (error) {
+    console.error("Error updating order:", error);
+  } else {
+    console.log("Successfully updated order in Supabase");
+  }
+};
+
+export const setSupabaseTableToOccupied = async (tableId: number) => {
+  const { data, error } = await supabase
+    .from('tables')
+    .update({ status: "occupied" })
+    .eq('id', tableId)
+
+  if (error) {
+    console.error("Error setting table to occupied:", error);
+  } else {
+    console.log("Successfully set table to occupied in Supabase");
+  }
+};

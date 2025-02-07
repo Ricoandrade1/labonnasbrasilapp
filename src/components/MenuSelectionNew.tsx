@@ -4,11 +4,10 @@ import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { toast } from "react-toastify";
 import { MenuSection } from "./menu/MenuSection";
-import { OrderSummaryNew } from "./menu/OrderSummaryNew";
+import OrderSummaryNew from "./menu/OrderSummaryNew";
 import { menuItems } from "../data/menu";
 import { MenuItem, TableOrder } from "../types";
 import { v4 as uuidv4 } from "uuid";
-import { addOrder, getTables } from "../lib/firebase";
 import { OrderManagerProvider } from "./OrderManager";
 import useOrderManager from "./OrderManager";
 import { useTable } from '../context/TableContext'; // Corrected import path
@@ -18,9 +17,8 @@ const MenuSelectionNew = () => {
   console.log("MenuSelectionNew component rendered");
   const [searchParams] = useSearchParams();
   const { currentOrders, addItem, removeItem, updateQuantity, clearOrders, getTotalPrice } = useOrderManager();
-  const [tables, setTables] = useState<any[]>([]);
   const [responsibleName, setResponsibleName] = useState("");
-  const { addOrdersToTable, getTableOrders, updateOrderStatus, clearTable, tables: tableContextTables } = useTable(); // Added clearTable and tables from context
+  const { addOrdersToTable, getTableOrders, updateOrderStatus, clearTable, tables: tableContextTables, setTables } = useTable(); // Added clearTable and tables from context
   const [orderHistory, setOrderHistory] = useState<TableOrder[]>([]);
   const { user } = useAuth(); // Get auth context and user
 
@@ -32,39 +30,29 @@ const MenuSelectionNew = () => {
   const tableParam = searchParams.get("table") || searchParams.get("tablecaixa");
 
   useEffect(() => {
-    const fetchTables = async () => {
-      const tablesData = await getTables();
-      console.log("MenuSelectionNew - fetchTables - tablesData", tablesData);
-      setTables(tablesData);
-    };
-
     const fetchOrderHistory = () => {
       if (tableParam) {
-        const tableId = parseInt(tableParam);
-        const currentTable = tableContextTables.find(table => table.id === tableId); // Get table from context
-        if (currentTable && currentTable.status === "available") {
-          setOrderHistory([]); // Clear history if table is available
-    } else {
-      const currentTable = tableContextTables.find(table => table.id === tableId);
-      if (currentTable) {
-        const tableOrders = currentTable.orders.map(order => ({
-          id: order.id, // Use the order ID from the TableOrder
-          tableId: tableParam,
-          responsibleName: order.responsibleName, // Get responsibleName from TableOrder
-          items: order.items, // Use items from TableOrder
-          timestamp: order.timestamp,
-          status: order.status,
-          total: order.total,
-        } as TableOrder));
-        setOrderHistory(tableOrders);
+        const tableId = parseInt(tableParam, 10);
+        if (!isNaN(tableId)) {
+          const currentTable = tableContextTables.find(table => table.id === tableId);
+          if (currentTable) {
+            const tableOrders = currentTable.orders.map(order => ({
+              id: order.id,
+              tableId: tableParam,
+              responsibleName: order.responsibleName,
+              items: order.items,
+              timestamp: order.timestamp,
+              status: order.status,
+              total: order.total,
+            } as TableOrder));
+            setOrderHistory(tableOrders);
+          }
+        }
       }
-    }
-  }
-};
+    };
 
-    fetchTables();
     fetchOrderHistory();
-  }, [searchParams, tableContextTables]); // Added tableContextTables to dependency array
+  }, [searchParams, tableContextTables, currentOrders]); // Added currentOrders to dependency array
 
   console.log("MenuSelectionNew - useEffect - currentOrders", currentOrders);
 
@@ -75,7 +63,11 @@ const MenuSelectionNew = () => {
 
   const handleQuantityChange = (item: MenuItem, change: number) => {
     if (change > 0) {
-      addItem({...item, quantity: 1});
+      const orderItem = {
+        ...item,
+        quantity: 1
+      };
+      addItem(orderItem);
     } else if (change < 0) {
       const existingItem = currentOrders.find(i => i.id === item.id);
       if (existingItem && existingItem.quantity > 1) {
@@ -99,6 +91,8 @@ const MenuSelectionNew = () => {
       return;
     }
 
+    const productIds = currentOrders.map(item => item.id);
+
     const tableOrder: TableOrder = {
       id: uuidv4(),
       tableId: tableParam || "1",
@@ -108,22 +102,32 @@ const MenuSelectionNew = () => {
       status: "pending",
       total: getTotalPrice(),
     };
-    setOrderHistory(prev => [...prev, tableOrder]);
 
-    // addOrdersToTable(parseInt(tableOrder.tableId), [tableOrder] , user); // Pass user object here
-    addOrder({
-      tableId: tableOrder.tableId,
-      products: tableOrder.items.map((item) => item.name),
-      total: tableOrder.total,
-      paymentMethod: "pending",
-      timestamp: tableOrder.timestamp,
-      responsibleName: responsibleName,
-      status: "ocupado",
-      source: tableParam?.includes("tablecaixa") ? "Caixa" : "Mesa",
-    });
+    const tableOrderWithProducts: any = {
+      ...tableOrder,
+      products: JSON.stringify(productIds),
+    };
+
+    setOrderHistory(prev => [...prev, tableOrderWithProducts]);
+
+    addOrdersToTable(parseInt(tableOrder.tableId), [tableOrderWithProducts] , user, 'cash');
 
     // Update table status in firebase
-    updateOrderStatus(parseInt(tableOrder.tableId), "", "pending");
+    // updateOrderStatus(parseInt(tableOrder.tableId), tableOrder.id, "pending");
+
+    // set table status to occupied
+    setTables(prevTables => {
+      const tableId = parseInt(tableOrder.tableId);
+      return prevTables.map(table => {
+        if (table.id === tableId) {
+          return {
+            ...table,
+            status: "occupied",
+          };
+        }
+        return table;
+      });
+    });
 
     toast.success(`${currentOrders.length} itens enviados para a cozinha`);
     // Reset form
@@ -132,46 +136,43 @@ const MenuSelectionNew = () => {
   };
 
   return (
-    <OrderManagerProvider>
-      <div className="container mx-auto px-3 sm:px-4 md:px-6 py-4 md:py-6">
-        <div className="space-y-8">
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-            <div className="lg:col-span-3 space-y-8">
-              <MenuSection
-                title="Rodízios"
-                items={menuItems.rodizio}
-                getItemQuantity={getItemQuantity}
-                onQuantityChange={handleQuantityChange}
-              />
-              <MenuSection
-                title="Diárias"
-                items={menuItems.diaria}
-                getItemQuantity={getItemQuantity}
-                onQuantityChange={handleQuantityChange}
-              />
-              <MenuSection
-                title="Bebidas"
-                items={menuItems.bebidas}
-                getItemQuantity={getItemQuantity}
-                onQuantityChange={handleQuantityChange}
-              />
-            </div>
-            <div className="lg:col-span-1">
-              <OrderSummaryNew
-                key={currentOrders.length}
-                orderItems={currentOrders}
-                tableResponsible={responsibleName}
-                onTableResponsibleChange={handleResponsibleNameChange}
-                onRemoveItem={removeItem}
-                onSubmit={handleSendToKitchen}
-                orderHistory={orderHistory}
-                tableParam={tableParam}
-              />
-            </div>
+    <div className="container mx-auto px-3 sm:px-4 md:px-6 py-4 md:py-6">
+      <div className="space-y-8">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          <div className="lg:col-span-3 space-y-8">
+            <MenuSection
+              title="Rodízios"
+              items={menuItems.rodizio}
+              getItemQuantity={getItemQuantity}
+              onQuantityChange={handleQuantityChange}
+            />
+            <MenuSection
+              title="Diárias"
+              items={menuItems.diaria}
+              getItemQuantity={getItemQuantity}
+              onQuantityChange={handleQuantityChange}
+            />
+            <MenuSection
+              title="Bebidas"
+              items={menuItems.bebidas}
+              getItemQuantity={getItemQuantity}
+              onQuantityChange={handleQuantityChange}
+            />
+          </div>
+          <div className="lg:col-span-1">
+            <OrderSummaryNew
+              key={currentOrders.length}
+              orderItems={currentOrders}
+              tableResponsible={responsibleName}
+              onTableResponsibleChange={handleResponsibleNameChange}
+              onRemoveItem={removeItem}
+              onSubmit={handleSendToKitchen}
+              tableParam={tableParam}
+            />
           </div>
         </div>
       </div>
-    </OrderManagerProvider>
+    </div>
   );
 };
 

@@ -1,35 +1,81 @@
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext"; // Import correto
-import FirebaseClearButton from '../components/FirebaseClearButton.tsx'; // Import correto
 import { Button } from "../components/ui/button"; // Import correto
 import { Card } from "../components/ui/card"; // Import correto
 import { LogOut, Users, Clock, Coffee } from "lucide-react";
 import { useTable } from "@/context/TableContext";
+import { useEffect } from "react";
 import { TableStatus } from "@/context/TableContext";
-import { useEffect, useState } from "react";
+import getSupabaseTables from "@/lib/getSupabaseTables";
+import addSupabaseTables from "@/lib/addSupabaseTables";
+import supabase from "@/lib/supabaseClient";
 
 const Tables = () => {
-  console.log("Tables component rendered");
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const { tables, updateOrderStatus, setAllTablesAvailable, forceUpdateTables } = useTable();
-  const [updateTables, setUpdateTables] = useState(0);
+  const tableContext = useTable();
+  const { tables, updateOrderStatus, setAllTablesAvailable, forceUpdateTables, setTables } = tableContext;
 
   useEffect(() => {
-    console.log("Tables - tables", tables);
-  }, [tables, updateTables]);
+  }, [tables]);
 
   useEffect(() => {
-    forceUpdateTables();
+    const fetchTables = async () => {
+      const tablesData = await getSupabaseTables();
+      console.log("Fetched tables:", tablesData);
+      setTables(tablesData);
+    };
+
+    fetchTables();
   }, []);
+
+  useEffect(() => {
+  }, []);
+
+  useEffect(() => {
+    // Subscribe to table changes
+    // const channel = supabase
+    //   .channel('public:tables')
+    //   .on(
+    //     'postgres_changes',
+    //     { event: '*', schema: 'public', table: 'tables' },
+    //   (payload) => {
+    //     console.log('Payload:', payload);
+    //     // Update the table that has been changed
+    //     setTables(prevTables => {
+    //       return prevTables.map(table => {
+    //         let record;
+    //         if (payload.record) {
+    //           if (payload.event === 'DELETE') {
+    //             record = payload.record.old_record;
+    //           } else {
+    //             record = payload.record.new;
+    //           }
+    //           if (record && table.id === record.id) {
+    //             return {
+    //               ...table,
+    //               ...record,
+    //             };
+    //           }
+    //           return table;
+    //         });
+    //       });
+    //     }
+    //   )
+    //   .subscribe();
+
+    // return () => {
+    //   supabase.removeChannel(channel)
+    // }
+  }, [setTables])
 
   const getStatusConfig = (status: TableStatus) => {
     switch (status) {
       case "available":
         return {
-          color: "bg-emerald-100 hover:bg-emerald-200",
-          textColor: "text-emerald-700",
-          borderColor: "border-emerald-200",
+          color: "bg-green-100 hover:bg-green-200",
+          textColor: "text-green-700",
+          borderColor: "border-green-200",
           label: "Disponível"
         };
       case "occupied":
@@ -46,6 +92,13 @@ const Tables = () => {
           borderColor: "border-amber-200",
           label: "Fechando"
         };
+      case "pending":
+        return {
+          color: "bg-blue-100 hover:bg-blue-200",
+          textColor: "text-blue-700",
+          borderColor: "border-blue-200",
+          label: "Aguardando"
+        };
       default:
         return {
           color: "bg-gray-100",
@@ -57,7 +110,20 @@ const Tables = () => {
   };
 
   const handleTableClick = (tableId: number) => {
-    updateOrderStatus(tableId, "", "pending");
+    console.log('handleTableClick function called');
+    // updateOrderStatus(tableId, "", "pending" as OrderStatus); // Remove this line
+    // set table status to pending
+    setTables(prevTables => {
+      return prevTables.map(table => {
+        if (table.id === tableId) {
+          return {
+            ...table,
+            status: "pending" as TableStatus,
+          };
+        }
+        return table;
+      });
+    });
     navigate(`/menu?table=${tableId}`);
   };
 
@@ -138,44 +204,55 @@ const Tables = () => {
       <div className="px-6 pb-6">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-            {tables.map((table) => {
-              const status = getStatusConfig(table.status);
-              return (
-                <button
-                  key={table.id}
-                  onClick={() => handleTableClick(table.id)}
-                  className={`relative group p-4 rounded-lg border transition-all duration-200 ${status.color} ${status.borderColor} hover:shadow-md`}
-                >
-                  <div className="flex flex-col items-center gap-2">
-                    <span className={`text-lg font-semibold ${status.textColor}`}>
-                      Mesa {table.id}
-                    </span>
-                    {table.status !== "available" && (
-                      <>
-                        {/* <div className="flex items-center gap-1">
-                          <Users className="h-4 w-4 text-gray-500" />
-                          <span className="text-sm text-gray-600">{table.occupants}</span>
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {table.timeSeated} • {table.server}
-                        </div> */}
-                      </>
-                    )}
-                    <span className={`text-xs font-medium ${status.textColor}`}>
-                      {status.label}
-                    </span>
-                  </div>
-                  <div className="absolute inset-0 border-2 border-[#518426] rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
-                </button>
-              );
-            })}
+            {tables.length > 0 ? (
+              tables
+                .filter((table, index, self) =>
+                  index === self.findIndex((t) => (
+                    t.id === table.id
+                  ))
+                )
+                .sort((a, b) => a.id - b.id)
+                .map((table) => {
+                  const status = getStatusConfig(table.status);
+                  return (
+                    <button
+                      key={table.id}
+                      onClick={() => handleTableClick(table.id)}
+                      className={`relative group p-4 rounded-lg border transition-all duration-200 ${status.color} ${status.borderColor} hover:shadow-md ${table.status === "occupied" ? "bg-rose-100 border-rose-200" : ""}`}
+                    >
+                      <div className="flex flex-col items-center gap-2">
+                        <span className={`text-lg font-semibold ${status.textColor}`}>
+                          Mesa {table.id}
+                        </span>
+                        {table.status !== "available" && (
+                          <>
+                            {/* <div className="flex items-center gap-1">
+                              <Users className="h-4 w-4 text-gray-500" />
+                            <span className="text-sm text-gray-600">{table.occupants}</span>
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {table.timeSeated} • {table.server}
+                          </div> */}
+                          </>
+                      )}
+                      <span className={`text-xs font-medium ${status.textColor}`}>
+                        {status.label}
+                      </span>
+                    </div>
+                    <div className="absolute inset-0 border-2 border-[#518426] rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+                    </button>
+                  );
+                })
+            ) : (
+              <p>Carregando mesas...</p>
+            )}
           </div>
         </div>
       </div>
       <div className="flex justify-center space-x-4">
         <Button onClick={() => setAllTablesAvailable()}>Set All Tables Available</Button>
         <Button onClick={() => { localStorage.clear(); window.location.reload(); }}>Limpar Dados Locais</Button>
-        <FirebaseClearButton />
+        <Button onClick={() => forceUpdateTables()}>Atualizar Mesas</Button>
       </div>
     </div>
   );

@@ -41,13 +41,15 @@ export interface OrderItem extends MenuItem {
   quantity: number
 }
 
+export type OrderStatus = "pending" | "completed" | "cancelled";
+
 export interface TableOrder {
   id: string
   tableId: string
   responsibleName: string
   items: OrderItem[]
   timestamp: string
-  status: "pending" | "completed" | "cancelled"
+  status: OrderStatus
   payment?: PaymentInfo
   deletionRequest?: DeletionRequest
   total: number
