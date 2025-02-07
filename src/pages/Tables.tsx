@@ -187,11 +187,13 @@ const Tables = () => {
               <p className="text-sm text-gray-500">Pedidos Ativos</p>
               <p className="text-2xl font-bold text-gray-900">
                 {tables.reduce((totalActiveOrders, table) => {
-                  table.orders.forEach(order => {
-                    if (order.status !== 'completed') {
-                      totalActiveOrders++;
-                    }
-                  });
+                  if (Array.isArray(table.orders)) { // Check if table.orders is an array
+                    table.orders.forEach(order => {
+                      if (order.status !== 'completed') {
+                        totalActiveOrders++;
+                      }
+                    });
+                  }
                   return totalActiveOrders;
                 }, 0)}
               </p>

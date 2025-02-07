@@ -111,3 +111,17 @@ export const setSupabaseTableToOccupied = async (tableId: number) => {
     console.log("Successfully set table to occupied in Supabase");
   }
 };
+
+export const getSupabaseOrdersForTable = async (tableId: number) => {
+  const { data, error } = await supabase
+    .from('orders')
+    .select('*')
+    .eq('tableid', tableId);
+
+  if (error) {
+    console.error("Error fetching orders for table:", error);
+    return [];
+  }
+
+  return data || [];
+};
