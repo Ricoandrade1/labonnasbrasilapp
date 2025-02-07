@@ -1,73 +1,48 @@
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext"; // Import correto
-import { Button } from "../components/ui/button"; // Import correto
-import { Card } from "../components/ui/card"; // Import correto
+import { useHistory } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { Button } from "../components/ui/button";
+import { Card } from "../components/ui/card";
 import { LogOut, Users, Clock, Coffee } from "lucide-react";
-import { useTable } from "@/context/TableContext";
-import { useEffect } from "react";
-import { TableStatus } from "@/context/TableContext";
-import getSupabaseTables from "@/lib/getSupabaseTables";
-import addSupabaseTables from "@/lib/addSupabaseTables";
-import supabase from "@/lib/supabaseClient";
+import { useTable } from "../context/TableContext";
+import { useEffect, useState } from "react"; // Import useState
+import { TableStatus } from "../context/TableContext";
+import { db } from '../lib/firebaseConfig'; // Import Firebase Firestore
+import { collection, getDocs } from "firebase/firestore"; // Import Firestore functions
 
 const Tables = () => {
-  const navigate = useNavigate();
+  const history = useHistory();
   const { user, logout } = useAuth();
   const tableContext = useTable();
-  const { tables, updateOrderStatus, setAllTablesAvailable, forceUpdateTables, setTables } = tableContext;
+  const { tables: contextTables, updateOrderStatus, setAllTablesAvailable, forceUpdateTables, setTables: setContextTables } = tableContext;
+  const [tables, useStateTables] = useState([]); // Use useState here
+  const setTables = setContextTables || useStateTables; // Fallback to useStateTables if setContextTables is not available
+
 
   useEffect(() => {
   }, [tables]);
 
   useEffect(() => {
     const fetchTables = async () => {
-      const tablesData = await getSupabaseTables();
-      console.log("Fetched tables:", tablesData);
-      setTables(tablesData);
+      try {
+        const querySnapshot = await getDocs(collection(db, "table"));
+        const firebaseTables = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        console.log("Fetched tables from Firebase:", firebaseTables);
+        setTables(firebaseTables);
+      } catch (error) {
+        console.error("Error fetching tables from Firebase:", error);
+      }
     };
 
     fetchTables();
-  }, []);
+  }, [setTables]); // Add setTables to the dependency array
 
   useEffect(() => {
   }, []);
 
   useEffect(() => {
-    // Subscribe to table changes
-    // const channel = supabase
-    //   .channel('public:tables')
-    //   .on(
-    //     'postgres_changes',
-    //     { event: '*', schema: 'public', table: 'tables' },
-    //   (payload) => {
-    //     console.log('Payload:', payload);
-    //     // Update the table that has been changed
-    //     setTables(prevTables => {
-    //       return prevTables.map(table => {
-    //         let record;
-    //         if (payload.record) {
-    //           if (payload.event === 'DELETE') {
-    //             record = payload.record.old_record;
-    //           } else {
-    //             record = payload.record.new;
-    //           }
-    //           if (record && table.id === record.id) {
-    //             return {
-    //               ...table,
-    //               ...record,
-    //             };
-    //           }
-    //           return table;
-    //         });
-    //       });
-    //     }
-    //   )
-    //   .subscribe();
-
-    // return () => {
-    //   supabase.removeChannel(channel)
-    // }
-  }, [setTables])
+    // Subscribe to table changes - Firebase Realtime Database or Firestore Listeners can be used here if needed.
+    // For now, we are fetching tables only once on component mount.
+  }, []);
 
   const getStatusConfig = (status: TableStatus) => {
     switch (status) {
@@ -109,7 +84,7 @@ const Tables = () => {
     }
   };
 
-  const handleTableClick = (tableId: number) => {
+  const handleTableClick = (tableId: string) => { // tableId is string now
     console.log('handleTableClick function called');
     // updateOrderStatus(tableId, "", "pending" as OrderStatus); // Remove this line
     // set table status to pending
@@ -124,7 +99,7 @@ const Tables = () => {
         return table;
       });
     });
-    navigate(`/menu?table=${tableId}`);
+    history.push(`/menu?table=${tableId}`);
   };
 
   return (
@@ -219,7 +194,7 @@ const Tables = () => {
                   return (
                     <button
                       key={table.id}
-                      onClick={() => handleTableClick(table.id)}
+                      onClick={() => handleTableClick(table.id as string)} // table.id is string now
                       className={`relative group p-4 rounded-lg border transition-all duration-200 ${status.color} ${status.borderColor} hover:shadow-md ${table.status === "occupied" ? "bg-rose-100 border-rose-200" : ""}`}
                     >
                       <div className="flex flex-col items-center gap-2">

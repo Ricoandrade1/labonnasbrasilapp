@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
-import { addSupabaseOrder, getSupabaseMenuItems } from '../lib/api'; // Import getSupabaseMenuItems
+import { useLocation } from "react-router-dom";
+import { addFirebaseOrder, getFirebaseMenuItems } from '../lib/api';
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { toast } from "react-toastify";
@@ -10,42 +10,46 @@ import { MenuItem, TableOrder } from "../types";
 import { v4 as uuidv4 } from "uuid";
 import { OrderManagerProvider } from "./OrderManager";
 import useOrderManager from "./OrderManager";
-import { useTable } from '../context/TableContext'; // Corrected import path
-import { useAuth } from '../context/AuthContext'; // Corrected import path
-// import { menuItems } from "../data/menu"; // Remove menuItems import
+import { useTable } from '../context/TableContext';
+import { useAuth } from '../context/AuthContext';
+// import { menuItems } from "../data/menu";
 
 const MenuTableNew = () => {
   console.log("MenuTableNew component rendered");
-  const [searchParams] = useSearchParams();
+  const location = useLocation();
   const { currentOrders, addItem, removeItem, updateQuantity, clearOrders, getTotalPrice } = useOrderManager();
   const [responsibleName, setResponsibleName] = useState("");
-  const { addOrdersToTable, getTableOrders, updateOrderStatus, clearTable, tables: tableContextTables, setTables } = useTable(); // Added clearTable and tables from context
+  const { addOrdersToTable, getTableOrders, updateOrderStatus, clearTable, tables: tableContextTables, setTables } = useTable();
   const [orderHistory, setOrderHistory] = useState<TableOrder[]>([]);
-  const { user } = useAuth(); // Get auth context and user
-  const [menuItemsFromSupabase, setMenuItemsFromSupabase] = useState<MenuItem[]>([]); // State for menu items from Supabase
+  const { user } = useAuth();
+  const [menuItemsFromSupabase, setMenuItemsFromSupabase] = useState<MenuItem[]>([]);
 
-  useEffect(() => { // useEffect to fetch menu items from Supabase
+  useEffect(() => {
+    console.log("MenuTableNew - location.search:", location.search);
+    console.log("MenuTableNew - tableContextTables:", tableContextTables);
+    console.log("MenuTableNew - currentOrders:", currentOrders);
     const fetchMenuItems = async () => {
-      const items = await getSupabaseMenuItems();
+      const items = await getFirebaseMenuItems();
       setMenuItemsFromSupabase(items);
     };
     fetchMenuItems();
-  }, []); // Empty dependency array to run only on mount
+  }, []);
 
   const handleResponsibleNameChange = (value: string) => {
     console.log("responsibleName changed to:", value);
     setResponsibleName(value);
   };
 
-  const tableParam = searchParams.get("table") || searchParams.get("tablecaixa");
+  const tableParam = new URLSearchParams(location.search).get("table") || new URLSearchParams(location.search).get("tablecaixa");
 
   useEffect(() => {
     const fetchOrderHistory = () => {
+      console.log("MenuTableNew - fetchOrderHistory - called");
       if (tableParam) {
         const tableId = parseInt(tableParam, 10);
         if (!isNaN(tableId)) {
           const currentTable = tableContextTables.find(table => table.id === tableId);
-          if (currentTable && currentTable.orders) { // Check if currentTable and currentTable.orders exist
+          if (currentTable && currentTable.orders) {
             const tableOrders = currentTable.orders.map(order => ({
               id: order.id,
               tableId: tableParam,
@@ -56,17 +60,17 @@ const MenuTableNew = () => {
               total: order.total,
             } as TableOrder));
             setOrderHistory(tableOrders);
+            console.log("MenuTableNew - fetchOrderHistory - tableOrders:", tableOrders);
           } else {
-            setOrderHistory([]); // Set orderHistory to empty array if no orders found
+            setOrderHistory([]);
+            console.log("MenuTableNew - fetchOrderHistory - orderHistory: []");
           }
         }
       }
     };
 
     fetchOrderHistory();
-  }, [searchParams, tableContextTables, currentOrders]); // Added currentOrders to dependency array
-
-  console.log("MenuTableNew - useEffect - currentOrders", currentOrders);
+  }, [location.search, tableContextTables, currentOrders]);
 
   const getItemQuantity = (itemId: string) => {
     const item = currentOrders.find((order) => order.id === itemId);
@@ -91,7 +95,7 @@ const MenuTableNew = () => {
   };
 
   const handleSendToKitchen = async () => {
-    console.log("handleSendToKitchen - responsibleName:", responsibleName); // 1. Log responsibleName at the beginning
+    console.log("handleSendToKitchen - responsibleName:", responsibleName);
 
     if (currentOrders.length === 0) {
       toast.error("Por favor, selecione pelo menos um item");
@@ -106,7 +110,7 @@ const MenuTableNew = () => {
     const tableOrder: TableOrder = {
       id: uuidv4(),
       tableId: tableParam || "1",
-      responsibleName: responsibleName, // Responsible name should be here
+      responsibleName: responsibleName,
       items: currentOrders,
       timestamp: new Date().toISOString(),
       status: "pending",
@@ -117,7 +121,7 @@ const MenuTableNew = () => {
 
     setOrderHistory(prev => [...prev, tableOrder]);
 
-    addSupabaseOrder(tableOrder, tableOrder.source);
+    addFirebaseOrder(tableOrder, tableOrder.source);
 
     // set table status to occupied
     setTables(prevTables => {
@@ -172,6 +176,7 @@ const MenuTableNew = () => {
               onRemoveItem={removeItem}
               onSubmit={handleSendToKitchen}
               tableParam={tableParam}
+              orderHistory={orderHistory}
             />
           </div>
         </div>

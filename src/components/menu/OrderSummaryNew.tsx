@@ -6,7 +6,6 @@ import { MenuItem, OrderItem, TableOrder } from "../../types";
 import React, { useState, useEffect } from "react";
 import { menuItems } from "../../data/menu";
 import { useTable } from "@/context/TableContext";
-import { useSearchParams } from "react-router-dom";
 import supabase from "@/lib/supabaseClient";
 
 interface OrderSummaryProps {
@@ -16,6 +15,7 @@ interface OrderSummaryProps {
   onRemoveItem: (itemId: string) => void;
   onSubmit: () => void;
   tableParam: string | null;
+  orderHistory: TableOrder[];
 }
 
 const OrderSummaryNew = ({
@@ -24,53 +24,16 @@ const OrderSummaryNew = ({
   onTableResponsibleChange,
   onRemoveItem,
   onSubmit,
-  tableParam
+  tableParam,
+  orderHistory
 }: OrderSummaryProps) => {
   console.log("OrderSummaryNew component rendered");
   const [responsibleNames, setResponsibleNames] = useState<string[]>([]);
-  const [orderHistory, setOrderHistory] = useState<TableOrder[]>([]);
   const { tables: tableContextTables } = useTable();
-  const [searchParams] = useSearchParams();
 
   useEffect(() => {
     setResponsibleNames(tableResponsible ? [tableResponsible] : []);
   }, [tableResponsible]);
-
-  useEffect(() => {
-    const fetchOrderHistory = async () => {
-      if (tableParam) {
-        const tableId = parseInt(tableParam, 10);
-        if (!isNaN(tableId)) {
-          const currentTable = tableContextTables.find(table => table.id === tableId);
-          if (currentTable) {
-            // Fetch order history from Supabase
-            const { data: orders, error } = await supabase
-              .from('orders')
-              .select('*')
-              .eq('tableid', tableId);
-
-            if (error) {
-              console.error("Error fetching order history:", error);
-              return;
-            }
-
-            const tableOrders = orders.map(order => ({
-              id: order.id,
-              tableId: tableParam,
-              responsibleName: order.responsibleName,
-              items: order.items,
-              timestamp: order.timestamp,
-              status: order.status,
-              total: order.total,
-            } as TableOrder));
-            setOrderHistory(tableOrders || []);
-          }
-        }
-      }
-    };
-
-    fetchOrderHistory();
-  }, [searchParams, tableContextTables, tableParam]);
 
   const getTotalPrice = () => {
     if (!orderItems || orderItems === null || orderItems === undefined || orderItems.length === 0) {
