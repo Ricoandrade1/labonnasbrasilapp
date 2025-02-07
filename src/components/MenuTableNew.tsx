@@ -1,27 +1,36 @@
 import React, { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
+import { addSupabaseOrder, getSupabaseMenuItems } from '../lib/api'; // Import getSupabaseMenuItems
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { toast } from "react-toastify";
 import { MenuSection } from "./menu/MenuSection";
 import OrderSummaryNew from "./menu/OrderSummaryNew";
-import { menuItems } from "../data/menu";
 import { MenuItem, TableOrder } from "../types";
 import { v4 as uuidv4 } from "uuid";
 import { OrderManagerProvider } from "./OrderManager";
 import useOrderManager from "./OrderManager";
 import { useTable } from '../context/TableContext'; // Corrected import path
 import { useAuth } from '../context/AuthContext'; // Corrected import path
-import { addFirebaseOrder } from '../lib/api';
+// import { menuItems } from "../data/menu"; // Remove menuItems import
 
-const MenuSelectionNew = () => {
-  console.log("MenuSelectionNew component rendered");
+const MenuTableNew = () => {
+  console.log("MenuTableNew component rendered");
   const [searchParams] = useSearchParams();
   const { currentOrders, addItem, removeItem, updateQuantity, clearOrders, getTotalPrice } = useOrderManager();
   const [responsibleName, setResponsibleName] = useState("");
   const { addOrdersToTable, getTableOrders, updateOrderStatus, clearTable, tables: tableContextTables, setTables } = useTable(); // Added clearTable and tables from context
   const [orderHistory, setOrderHistory] = useState<TableOrder[]>([]);
   const { user } = useAuth(); // Get auth context and user
+  const [menuItemsFromSupabase, setMenuItemsFromSupabase] = useState<MenuItem[]>([]); // State for menu items from Supabase
+
+  useEffect(() => { // useEffect to fetch menu items from Supabase
+    const fetchMenuItems = async () => {
+      const items = await getSupabaseMenuItems();
+      setMenuItemsFromSupabase(items);
+    };
+    fetchMenuItems();
+  }, []); // Empty dependency array to run only on mount
 
   const handleResponsibleNameChange = (value: string) => {
     console.log("responsibleName changed to:", value);
@@ -57,7 +66,7 @@ const MenuSelectionNew = () => {
     fetchOrderHistory();
   }, [searchParams, tableContextTables, currentOrders]); // Added currentOrders to dependency array
 
-  console.log("MenuSelectionNew - useEffect - currentOrders", currentOrders);
+  console.log("MenuTableNew - useEffect - currentOrders", currentOrders);
 
   const getItemQuantity = (itemId: string) => {
     const item = currentOrders.find((order) => order.id === itemId);
@@ -108,7 +117,7 @@ const MenuSelectionNew = () => {
 
     setOrderHistory(prev => [...prev, tableOrder]);
 
-    addFirebaseOrder(tableOrder, tableOrder.source);
+    addSupabaseOrder(tableOrder, tableOrder.source);
 
     // set table status to occupied
     setTables(prevTables => {
@@ -137,19 +146,19 @@ const MenuSelectionNew = () => {
           <div className="lg:col-span-3 space-y-8">
             <MenuSection
               title="Rodízios"
-              items={menuItems.rodizio}
+              items={menuItemsFromSupabase.filter(item => item.category === 'Rodízios')}
               getItemQuantity={getItemQuantity}
               onQuantityChange={handleQuantityChange}
             />
             <MenuSection
               title="Diárias"
-              items={menuItems.diaria}
+              items={menuItemsFromSupabase.filter(item => item.category === 'Diárias')}
               getItemQuantity={getItemQuantity}
               onQuantityChange={handleQuantityChange}
             />
             <MenuSection
               title="Bebidas"
-              items={menuItems.bebidas}
+              items={menuItemsFromSupabase.filter(item => item.category === 'Bebidas')}
               getItemQuantity={getItemQuantity}
               onQuantityChange={handleQuantityChange}
             />
@@ -171,4 +180,4 @@ const MenuSelectionNew = () => {
   );
 };
 
-export default MenuSelectionNew;
+export default MenuTableNew;

@@ -18,8 +18,8 @@ import { Button } from "../components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { useNavigate } from "react-router-dom";
-import PDVPanel from "@/components/PDVPanel";
-import { addTable } from "@/lib/firebase";
+import PDVPanel from "../components/PDVPanel"; // Corrected import path
+import { addFirebaseTable } from "../lib/api";
 
 interface OpenTable {
   id: string;
@@ -46,7 +46,7 @@ const Cashier = () => {
           tableNumber: String(openTables.length + 1),
           status: "occupied",
         };
-        await addTable(newTable);
+        await addFirebaseTable(newTable);
         navigate(`/tablecaixa`);
       }}>Abrir Mesa</Button>
       <div className="grid gap-6 md:grid-cols-2">

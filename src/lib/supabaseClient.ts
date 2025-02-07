@@ -1,7 +1,23 @@
-import { createClient } from '@supabase/supabase-js'
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
 
-const supabaseUrl = 'https://uefncrfntjhijscxrbqj.supabase.co'
-const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVlZm5jcmZudGpoaWpzY3hyYnFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzg4NjM5NTAsImV4cCI6MjA1NDQzOTk1MH0._10eKNCZErRh7IXgW6u-kJoDRTGWptLPQh_isQmgkv4";
-const supabase = createClient(supabaseUrl, supabaseKey);
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyBJQl6t7LyOlAPhQ11UZCGqPv--4nfvoYs",
+  authDomain: "labonnasbrasil-ab1cb.firebaseapp.com",
+  projectId: "labonnasbrasil-ab1cb",
+  storageBucket: "labonnasbrasil-ab1cb.firebasestorage.app",
+  messagingSenderId: "1042659454330",
+  appId: "1:1042659454330:web:b70f247d2172f115003ac3",
+  measurementId: "G-27F961QLCG"
+};
 
-export default supabase
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
+
+export default app;

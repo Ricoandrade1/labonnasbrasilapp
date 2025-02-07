@@ -1,127 +1,163 @@
-import supabase from "./supabaseClient";
+import app from "./supabaseClient";
+import { getFirestore, collection, getDocs, deleteDoc, doc, addDoc, onSnapshot, query, updateDoc, where } from "firebase/firestore";
+import { OrderItem, TableOrder } from "../types";
 
+export const clearFirebaseTables = async () => {
+  const db = getFirestore(app);
+  const tablesCollection = collection(db, 'tables');
 
-export const clearSupabaseTables = async () => {
-  const { error } = await supabase
-    .from('tables')
-    .delete()
-    .neq('id', 0); // Evita deletar a mesa com ID 0 (se existir)
-
-  if (error) {
-    console.error("Error clearing tables:", error);
-  } else {
-    console.log("Successfully cleared all tables in Supabase");
-  }
-};
-
-import { OrderItem } from "../types";
-
-export const addSupabaseOrder = async (item: OrderItem, { tableId, products, total, paymentMethod, timestamp, responsibleName, status, source }: { tableId: string, products: string, total: number, paymentMethod: string, timestamp: string, responsibleName: string, status: string, source: string }) => {
-  console.log("Adding order to Supabase:", { tableId, products, total, paymentMethod, timestamp, responsibleName, status, source, item });
-  const { data, error } = await supabase
-    .from('orders')
-    .insert([
-      { 
-        tableId, 
-        products, 
-        total, 
-        paymentMethod, 
-        timestamp, 
-        responsibleName, 
-        status, 
-        source,
-        id: item.id,
-        name: item.name,
-        price: item.price,
-        category: item.category,
-        description: item.description,
-        includes: item.includes,
-        daysAvailable: item.daysAvailable,
-        reportEnabled: item.reportEnabled,
-        editablePrice: item.editablePrice,
-        quantity: item.quantity
+  try {
+    const querySnapshot = await getDocs(tablesCollection);
+    querySnapshot.forEach(async (document) => {
+      if (document.data().id !== 0) { // Assuming 'id' field exists in your documents
+        await deleteDoc(doc(db, 'tables', document.id));
       }
-    ])
+    });
+    console.log("Successfully cleared all tables in Firebase");
+  } catch (error) {
+    console.error("Error clearing tables:", error);
+  }
+};
 
-  if (error) {
+export const addFirebaseOrder = async (tableOrder: TableOrder, source: string) => {
+  console.log("Adding order to Firebase:", tableOrder);
+  console.log("tableOrder data:", tableOrder); // Log tableOrder data
+  console.log("tableOrder.items (JSON):", JSON.stringify(tableOrder.items)); // Log items as JSON string
+
+  const db = getFirestore(app);
+  try {
+    const docRef = await addDoc(collection(db, 'orders'), {
+      tableId: tableOrder.tableId,
+      responsibleName: tableOrder.responsibleName,
+      items: JSON.stringify(tableOrder.items), // Store items as JSON
+      total: tableOrder.total,
+      timestamp: tableOrder.timestamp,
+      status: tableOrder.status, // Add status here
+      id: tableOrder.id,
+      source: source,
+      paymentMethod: tableOrder.paymentMethod, // Include paymentMethod
+    });
+
+    console.log("Document written with ID: ", docRef.id);
+  } catch (error) {
     console.error("Error adding order:", error);
-  } else {
-    console.log("Successfully added order to Supabase");
   }
 };
 
-export const onSupabaseTablesChange = (callback: (tables: any[]) => void) => {
-  const channel = supabase.channel('tables_changes');
+export const onFirebaseTablesChange = (callback: (tables: any[]) => void) => {
+  const db = getFirestore(app);
+  const tablesCollection = collection(db, 'tables');
 
-  channel.on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tables' }, payload => {
-      console.log('Change received!', payload)
-      supabase
-        .from('tables')
-        .select('*')
-        .then(({ data, error }) => {
-          if (error) {
-            console.error("Error fetching tables:", error);
-          } else {
-            callback(data || []);
-          }
-        });
-    })
-    .subscribe()
+  const unsubscribe = onSnapshot(tablesCollection, (querySnapshot) => {
+    const tables: any[] = [];
+    querySnapshot.forEach((doc) => {
+      tables.push(doc.data());
+    });
+    callback(tables);
+    console.log("Firebase tables data updated!"); // Log Firebase update
+  }, (error) => {
+    console.error("Error fetching tables from Firebase:", error);
+  });
 
-  return () => {
-    supabase.removeChannel(channel);
-  };
+  return unsubscribe;
 };
 
-export const updateSupabaseTable = async (tableId: number, newStatus: string) => {
-  const { data, error } = await supabase
-    .from('tables')
-    .update({ status: newStatus })
-    .eq('id', tableId)
+export const onFirebaseOrdersChange = (callback: (payload: any) => void) => {
+  const db = getFirestore(app);
+  const ordersCollection = collection(db, 'orders');
 
-  if (error) {
+  const unsubscribe = onSnapshot(ordersCollection, (querySnapshot) => {
+    querySnapshot.docChanges().forEach((change) => {
+      if (change.type === "added" || change.type === "modified" || change.type === "removed") {
+        console.log("Firebase order data changed:", change);
+        callback(change); // Pass the change object to the callback
+      }
+    });
+    console.log("Firebase orders data updated!"); // Log Firebase update
+  }, (error) => {
+    console.error("Error fetching orders from Firebase:", error);
+  });
+
+  return unsubscribe;
+};
+
+
+export const updateFirebaseTable = async (tableId: number, newStatus: string) => {
+  const db = getFirestore(app);
+  try {
+    const tableDocRef = doc(db, 'tables', String(tableId)); // Firestore document IDs are strings
+    await updateDoc(tableDocRef, { status: newStatus });
+    console.log("Successfully updated table in Firebase");
+  } catch (error) {
     console.error("Error updating table:", error);
-  } else {
-    console.log("Successfully updated table in Supabase");
   }
 };
 
-export const updateSupabaseOrder = async (orderId: string, newStatus: string) => {
-  const { data, error } = await supabase
-    .from('orders')
-    .update({ status: newStatus })
-    .eq('id', orderId)
-
-  if (error) {
+export const updateFirebaseOrder = async (orderId: string, newStatus: string) => {
+  const db = getFirestore(app);
+  try {
+    const orderDocRef = doc(db, 'orders', orderId);
+    await updateDoc(orderDocRef, { status: newStatus });
+    console.log("Successfully updated order in Firebase");
+  } catch (error) {
     console.error("Error updating order:", error);
-  } else {
-    console.log("Successfully updated order in Supabase");
   }
 };
 
-export const setSupabaseTableToOccupied = async (tableId: number) => {
-  const { data, error } = await supabase
-    .from('tables')
-    .update({ status: "occupied" })
-    .eq('id', tableId)
-
-  if (error) {
+export const setFirebaseTableToOccupied = async (tableId: number) => {
+  const db = getFirestore(app);
+  try {
+    const tableDocRef = doc(db, 'tables', String(tableId));
+    await updateDoc(tableDocRef, { status: "occupied" });
+    console.log("Successfully set table to occupied in Firebase");
+  } catch (error) {
     console.error("Error setting table to occupied:", error);
-  } else {
-    console.log("Successfully set table to occupied in Supabase");
   }
 };
 
-export const getSupabaseOrdersForTable = async (tableId: number) => {
-  const { data, error } = await supabase
-    .from('orders')
-    .select('*')
-    .eq('tableid', tableId);
-
-  if (error) {
+export const getFirebaseOrdersForTable = async (tableId: number) => {
+  const db = getFirestore(app);
+  try {
+    const ordersCollection = collection(db, 'orders');
+    const q = query(ordersCollection, where('tableId', '==', tableId));
+    const querySnapshot = await getDocs(q);
+    const orders: any[] = [];
+    querySnapshot.forEach((doc) => {
+      orders.push(doc.data());
+    });
+    console.log("Successfully fetched orders for table from Firebase");
+    return orders;
+  } catch (error) {
     console.error("Error fetching orders for table:", error);
     return [];
   }
+};
 
-  return data || [];
+export const getFirebaseMenuItems = async () => {
+  const db = getFirestore(app);
+  try {
+    const menuItemsCollection = collection(db, 'menu_items');
+    const querySnapshot = await getDocs(menuItemsCollection);
+    const menuItems: any[] = [];
+    querySnapshot.forEach((doc) => {
+      menuItems.push(doc.data());
+    });
+    console.log("Successfully fetched menu items from Firebase");
+    return menuItems;
+  } catch (error) {
+    console.error("Error fetching menu items:", error);
+    return [];
+  }
+};
+
+export const addFirebaseTable = async (tableData: { tableNumber: string; status: string }) => {
+  const db = getFirestore(app);
+  try {
+    const docRef = await addDoc(collection(db, 'tables'), tableData);
+    console.log("Successfully added table to Firebase with ID: ", docRef.id);
+    return { data: { ...tableData, id: docRef.id } }; // Return similar data structure
+  } catch (error) {
+    console.error("Error adding table:", error);
+    return null;
+  }
 };

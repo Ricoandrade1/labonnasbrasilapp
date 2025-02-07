@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react'
 import { TableOrder, OrderItem } from '../types'
 import { useAuth, User } from './AuthContext'; // Importar useAuth e User
 import getSupabaseTables from '../lib/getSupabaseTables'
-import { clearSupabaseTables, addSupabaseOrder, onSupabaseTablesChange, updateSupabaseTable, updateSupabaseOrder, setSupabaseTableToOccupied, getSupabaseOrdersForTable } from '../lib/api'
+import { clearFirebaseTables, addFirebaseOrder, onFirebaseTablesChange, updateFirebaseTable, updateFirebaseOrder, setFirebaseTableToOccupied, getFirebaseOrdersForTable, addFirebaseTable } from '../lib/api'
 
 export type TableStatus = "available" | "occupied" | "pending" | "closing"
 
@@ -21,13 +21,13 @@ import { OrderStatus } from '../types';
 
 interface TableContextType {
   tables: Table[]
-  addOrdersToTable: (tableId: number, orders: TableOrder[], user: User | null, paymentMethod: string) => void
+  addOrdersToTable: (tableId: number, orders: TableOrder[], user: User | null, paymentMethod: string, source?: string) => void
   updateOrderStatus: (tableId: number, orderId: string, newStatus: OrderStatus) => void
   clearTable: (tableId: number) => void
   getTableOrders: (tableId: number) => OrderItem[]
   setAllTablesAvailable: () => void
   forceUpdateTables: () => void
-  setTables: React.Dispatch<React.SetStateAction<Table[]>>;
+  setTables: React.Dispatch<React.SetStateAction<Table[]>>
 }
 
 const TableContext = createContext<TableContextType | undefined>(undefined)
@@ -40,7 +40,7 @@ export const TableProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return orders.reduce((total, order) => total + order.total, 0)
   }
 
-  const addOrdersToTable = async (tableId: number, newOrders: TableOrder[], user: User | null, paymentMethod: string) => {
+  const addOrdersToTable = async (tableId: number, newOrders: TableOrder[], user: User | null, paymentMethod: string, source?: string) => {
     // 1. Fetch current tables state
     const prevTables = tables; // Access the tables state directly
 
@@ -51,19 +51,16 @@ export const TableProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
         // Chamar addSupabaseOrder para cada novo pedido
         for (const order of newOrders) {
-          for (const item of order.items) {
-            const products = order.items.map(item => item.id); // Extrair product IDs
-            await addSupabaseOrder(item, {
-              tableId: String(tableId), // tableId precisa ser string para addOrder
-              products: JSON.stringify(products),
-              total: parseFloat(order.total.toFixed(2)),
-              paymentMethod: paymentMethod,
-              timestamp: new Date().toISOString(),
-              responsibleName: user?.name || 'Unknown User', // Usar nome do usuário logado ou 'Unknown User'
-              status: 'pending',
-              source: 'web',
-            });
-          }
+          const tableOrder = {
+            tableId: String(tableId),
+            responsibleName: user?.name || 'Unknown User', // Usar nome do usuário logado ou 'Unknown User'
+            items: order.items,
+            total: parseFloat(order.total.toFixed(2)),
+            timestamp: new Date().toISOString(),
+            status: 'kitchen-pending', // Definir status como 'kitchen-pending' ao adicionar o pedido
+            id: order.id, // Assuming order has an id
+          } as TableOrder;
+          await addSupabaseOrder(tableOrder, 'web');
         }
 
         setSupabaseTableToOccupied(tableId);

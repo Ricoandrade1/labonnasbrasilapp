@@ -26,22 +26,19 @@ export interface DeletionRequest {
 }
 
 export interface MenuItem {
-  id: string
-  name: string
-  price: number
-  category: "rodizio" | "diaria" | "bebida"
-  description?: string
-  includes?: string[]
-  daysAvailable?: string[]
-  reportEnabled?: boolean
-  editablePrice?: boolean
+  id: string;
+  category: string;
+  name: string;
+  price: number;
+  description?: string;
+  image?: string;
 }
 
 export interface OrderItem extends MenuItem {
   quantity: number
 }
 
-export type OrderStatus = "pending" | "completed" | "cancelled";
+export type OrderStatus = "pending" | "kitchen-pending" | "completed" | "cancelled";
 
 export interface TableOrder {
   id: string
@@ -54,4 +51,6 @@ export interface TableOrder {
   deletionRequest?: DeletionRequest
   total: number
   notes?: string
+  paymentMethod: string;
+  source: string;
 }
