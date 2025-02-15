@@ -1,48 +1,77 @@
-import { useHistory } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
 import { LogOut, Users, Clock, Coffee } from "lucide-react";
-import { useTable } from "../context/TableContext";
-import { useEffect, useState } from "react"; // Import useState
-import { TableStatus } from "../context/TableContext";
-import { db } from '../lib/firebaseConfig'; // Import Firebase Firestore
-import { collection, getDocs } from "firebase/firestore"; // Import Firestore functions
+import { useTable } from "@/context/TableContext";
+import { useEffect, useState } from "react";
+import { TableStatus } from "@/context/TableContext";
+import { db, collection, getDocs, getFirebaseOrderHistory } from "@/lib/api";
+
+interface Table {
+  id: string | number;
+  tableNumber: string;
+  status: TableStatus;
+  orders: any[];
+  totalAmount: number;
+  openingTime?: string;
+}
+
+const calculateAverageTime = (tables: Table[]): string => {
+  const occupiedTables = tables.filter(t => t.status === "occupied");
+  if (occupiedTables.length === 0) {
+    return "-";
+  }
+
+  const totalTime = occupiedTables.reduce((acc, table) => {
+    if (!table.openingTime) {
+      return acc;
+    }
+    const openingTime = new Date(table.openingTime).getTime();
+    const currentTime = Date.now();
+    const diff = currentTime - openingTime;
+    return acc + diff;
+  }, 0);
+
+  const averageTime = totalTime / occupiedTables.length;
+  const minutes = Math.floor(averageTime / (60 * 1000));
+  return `${minutes} min`;
+};
 
 const Tables = () => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { user, logout } = useAuth();
   const tableContext = useTable();
-  const { tables: contextTables, updateOrderStatus, setAllTablesAvailable, forceUpdateTables, setTables: setContextTables } = tableContext;
-  const [tables, useStateTables] = useState([]); // Use useState here
-  const setTables = setContextTables || useStateTables; // Fallback to useStateTables if setContextTables is not available
+  const { tables, setAllTablesAvailable, forceUpdateTables, setTables } = tableContext;
+  const [loading, setLoading] = useState(true);
 
-
-  useEffect(() => {
-  }, [tables]);
-
-  useEffect(() => {
-    const fetchTables = async () => {
-      try {
-        const querySnapshot = await getDocs(collection(db, "table"));
-        const firebaseTables = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        console.log("Fetched tables from Firebase:", firebaseTables);
-        setTables(firebaseTables);
+  const fetchTables = async () => {
+    try {
+      const querySnapshot = await getDocs(collection(db, "Mesas"));
+      const tablesData = await Promise.all(querySnapshot.docs.map(async doc => {
+const data = doc.data() as Omit<Table, 'id'>;
+          const tableData: Table = {
+            id: doc.id,
+            tableNumber: data.tableNumber || '',
+            status: (data.status || 'available') as TableStatus,
+            totalAmount: data.totalAmount || 0,
+            openingTime: data.openingTime || null,
+            orders: data.orderHistory || []
+          };
+          return tableData;
+        }));
+        console.log("Tables.tsx - Fetched tables:", tablesData);
+        setTables(tablesData);
       } catch (error) {
-        console.error("Error fetching tables from Firebase:", error);
+        console.error("Tables.tsx - Error fetching tables:", error);
+      } finally {
+        setLoading(false);
       }
     };
 
+  useEffect(() => {
     fetchTables();
-  }, [setTables]); // Add setTables to the dependency array
-
-  useEffect(() => {
-  }, []);
-
-  useEffect(() => {
-    // Subscribe to table changes - Firebase Realtime Database or Firestore Listeners can be used here if needed.
-    // For now, we are fetching tables only once on component mount.
-  }, []);
+  }, [setTables]);
 
   const getStatusConfig = (status: TableStatus) => {
     switch (status) {
@@ -84,22 +113,9 @@ const Tables = () => {
     }
   };
 
-  const handleTableClick = (tableId: string) => { // tableId is string now
-    console.log('handleTableClick function called');
-    // updateOrderStatus(tableId, "", "pending" as OrderStatus); // Remove this line
-    // set table status to pending
-    setTables(prevTables => {
-      return prevTables.map(table => {
-        if (table.id === tableId) {
-          return {
-            ...table,
-            status: "pending" as TableStatus,
-          };
-        }
-        return table;
-      });
-    });
-    history.push(`/menu?table=${tableId}`);
+  const handleTableClick = (tableId: string) => {
+    console.log('Tables.tsx - handleTableClick function called with tableId:', tableId);
+    navigate(`/menu?table=${tableId}`);
   };
 
   return (
@@ -116,8 +132,8 @@ const Tables = () => {
               <div className="w-2 h-2 bg-green-500 rounded-full"></div>
               <span className="text-sm font-medium text-gray-700">{user?.name}</span>
             </div>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               size="sm"
               onClick={() => logout()}
               className="flex items-center gap-2"
@@ -139,18 +155,20 @@ const Tables = () => {
             <div>
               <p className="text-sm text-gray-500">Mesas Ocupadas</p>
               <p className="text-2xl font-bold text-gray-900">
-                {tables.filter(t => t.status === "occupied").length} / {tables.length}
+                {tables && tables.filter(t => t.status === "occupied").length} / {tables.length}
               </p>
             </div>
           </Card>
-          
+
           <Card className="p-4 flex items-center gap-4">
             <div className="p-3 bg-blue-100 rounded-full">
               <Clock className="h-6 w-6 text-blue-600" />
             </div>
             <div>
               <p className="text-sm text-gray-500">Tempo Médio</p>
-              <p className="text-2xl font-bold text-gray-900">-</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {tables ? calculateAverageTime(tables) : "-"}
+              </p>
             </div>
           </Card>
 
@@ -161,15 +179,10 @@ const Tables = () => {
             <div>
               <p className="text-sm text-gray-500">Pedidos Ativos</p>
               <p className="text-2xl font-bold text-gray-900">
-                {tables.reduce((totalActiveOrders, table) => {
-                  if (Array.isArray(table.orders)) { // Check if table.orders is an array
-                    table.orders.forEach(order => {
-                      if (order.status !== 'completed') {
-                        totalActiveOrders++;
-                      }
-                    });
-                  }
-                  return totalActiveOrders;
+                {tables && tables.reduce((totalActiveOrders, table) => {
+                  const orders = table.orders || [];
+                  const activeOrders = orders.filter(order => order.status !== 'completed');
+                  return totalActiveOrders + activeOrders.length;
                 }, 0)}
               </p>
             </div>
@@ -181,25 +194,27 @@ const Tables = () => {
       <div className="px-6 pb-6">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-            {tables.length > 0 ? (
+            {loading ? (
+              <p>Carregando mesas...</p>
+            ) : tables.length > 0 ? (
               tables
                 .filter((table, index, self) =>
                   index === self.findIndex((t) => (
                     t.id === table.id
                   ))
                 )
-                .sort((a, b) => a.id - b.id)
+                .sort((a, b) => parseInt(a.tableNumber) - parseInt(b.tableNumber))
                 .map((table) => {
                   const status = getStatusConfig(table.status);
                   return (
                     <button
                       key={table.id}
-                      onClick={() => handleTableClick(table.id as string)} // table.id is string now
+                      onClick={() => handleTableClick(String(table.id))}
                       className={`relative group p-4 rounded-lg border transition-all duration-200 ${status.color} ${status.borderColor} hover:shadow-md ${table.status === "occupied" ? "bg-rose-100 border-rose-200" : ""}`}
                     >
                       <div className="flex flex-col items-center gap-2">
                         <span className={`text-lg font-semibold ${status.textColor}`}>
-                          Mesa {table.id}
+                          Mesa {String(table.tableNumber)}
                         </span>
                         {table.status !== "available" && (
                           <>
@@ -221,7 +236,7 @@ const Tables = () => {
                   );
                 })
             ) : (
-              <p>Carregando mesas...</p>
+              <p>Nenhuma mesa encontrada.</p>
             )}
           </div>
         </div>

@@ -10,8 +10,9 @@ import {
   CardTitle,
 } from "./ui/card";
 import PaymentDialog from "./PaymentDialog";
-import supabase from "../lib/supabaseClient"; // Importação corrigida
-import { menuItems } from "../data/menuItems"; // Caminho de importação corrigido
+import { collection, getDocs, getFirestore, query, where, onSnapshot } from "firebase/firestore";
+import { db } from "../lib/firebase";
+import { menuItems } from "@/data/menuItems";
 
 interface OpenTable {
   id: string;
@@ -53,30 +54,50 @@ const PDVPanel = () => {
 
   const loadTablesFromFirebase = async () => {
     try {
-      const { data: supabaseTables, error } = await supabase
-        .from('statusdemesa')
-        .select('*');
+      const dbInstance = getFirestore();
+      // Carregando mesas de 'statusdemesa' do Firebase
+      const tablesCollection = collection(dbInstance, "statusdemesa");
+      const occupiedTablesQuery = query(tablesCollection);
+      const unsubscribe = onSnapshot(occupiedTablesQuery, (tablesSnapshot) => {
+        const firebaseTables = tablesSnapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            tableNumber: data.tableId, // Use tableId from firebase data
+            status: data.status,
+            total: data.total,
+            products: data.products, // Assuming products is an array
+            responsibleName: data.responsibleName,
+            timestamp: data.timestamp,
+          } as OpenTable;
+        });
+        console.log("Firebase tables data before setOpenTables:", firebaseTables);
+        // Log firebaseTables data
+        console.log("firebaseTables:", JSON.stringify(firebaseTables, null, 2));
+        // Use a Map to group tables by tableNumber
+        const tablesMap = new Map<string, OpenTable[]>();
+        firebaseTables.forEach(table => {
+          const existingTablesForNumber = tablesMap.get(table.tableNumber) || [];
+          existingTablesForNumber.push(table);
+          tablesMap.set(table.tableNumber, existingTablesForNumber);
+        });
 
-      if (error) {
-        console.error("Erro ao carregar mesas do Supabase:", error);
-        return;
-      }
+        // Convert the map to an array of tables for setOpenTables
+        const groupedTables = Array.from(tablesMap.values()).map(tables => tables[0]); // Use the first table in each group for display
+        console.log("groupedTables:", JSON.stringify(groupedTables, null, 2));
+        setOpenTables(groupedTables);
+        console.log("PDVPanel - loadTablesFromFirebase - setOpenTables:", groupedTables);
+      }, (error) => {
+        console.error("Erro ao ouvir atualizações do Firebase:", error);
+        console.log("Firebase error details:", error);
+      });
 
-      if (supabaseTables) {
-        const groupedTables = supabaseTables.reduce((map, table) => {
-          const tableNumber = table.tableId; // Assumindo que 'tableId' é o número da mesa
-          if (!map.has(tableNumber)) {
-            map.set(tableNumber, table);
-          }
-          return map;
-        }, new Map());
-
-        const groupedTablesArray = Array.from(groupedTables.values());
-        console.log("Supabase tables data:", groupedTablesArray);
-        setOpenTables(groupedTablesArray as OpenTable[]);
-      }
+      // Cleanup listener on unmount
+      return () => unsubscribe();
     } catch (error) {
-      console.error("Erro ao carregar mesas do Supabase:", error);
+      console.error("Erro ao carregar mesas ocupadas do Firebase:", error);
+      console.log("Firebase error details:", error);
+      // Lidar com o erro adequadamente
     }
   };
 
@@ -89,9 +110,9 @@ const PDVPanel = () => {
     setOrderHistoryFromFirebase(table.tableNumber);
   };
 
-  const setOrderHistoryFromFirebase = async (tableNumber: string) => {
+  const setOrderHistoryFromFirebase = (tableNumber: string) => {
     if (unsubscribeOrderHistory) {
-      unsubscribeOrderHistory(); // Cancela o listener anterior
+      unsubscribeOrderHistory(); // Unsubscribe from previous listener
     }
 
     if (!tableNumber) {
@@ -100,45 +121,51 @@ const PDVPanel = () => {
       return;
     }
 
-    try {
-      const { data: tableData, error } = await supabase
-        .from('statusdemesa')
-        .select('*')
-        .eq('tableId', tableNumber)
-        .single(); // Use single() para obter apenas um registro
+    const dbInstance = getFirestore();
+    const tablesCollection = collection(dbInstance, "statusdemesa");
+    const occupiedTablesQuery = query(tablesCollection, where("tableId", "==", tableNumber));
 
-      if (error) {
-        console.error("Erro ao carregar histórico de pedidos do Supabase:", error);
-        return;
-      }
+    const unsubscribe = onSnapshot(occupiedTablesQuery, (querySnapshot) => {
+      console.log("onSnapshot callback triggered for table:", tableNumber); // LOG 1: onSnapshot triggered
+      console.log("querySnapshot data:", querySnapshot); // LOG 2: querySnapshot data
 
-      if (tableData) {
-        const products = tableData.products as string[] || [];
-        const productCounts: { [name: string]: number } = {};
-        products.forEach(productName => {
-          productCounts[productName] = (productCounts[productName] || 0) + 1;
-        });
+      let allProducts: string[] = [];
+      let total = 0;
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        const products = data.products as string[];
+        if (products && Array.isArray(products)) {
+          allProducts = allProducts.concat(products);
+        }
+      });
 
-        const orderItems: OrderItem[] = Object.entries(productCounts).map(([productName, quantity]) => {
-          const menuItem = menuItems.find(item =>
-            item.name.trim().toLowerCase() === productName.trim().toLowerCase()
-          );
-          return {
-            name: productName,
-            price: menuItem ? menuItem.price : 0,
-            quantity: quantity,
-          };
-        });
-        setOrderHistory(orderItems);
-        const calculatedTotal = orderItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
-        setOrderTotal(calculatedTotal);
-      } else {
-        setOrderHistory([]);
-        setOrderTotal(0);
-      }
-    } catch (error) {
-      console.error("Erro ao carregar histórico de pedidos do Supabase:", error);
-    }
+      console.log("allProducts array:", allProducts); // LOG 3: allProducts array
+
+      const productCounts: { [name: string]: number } = {};
+      allProducts.forEach(productName => {
+        productCounts[productName] = (productCounts[productName] || 0) + 1;
+      });
+
+      const orderItems: OrderItem[] = Object.entries(productCounts).map(([productName, quantity]) => {
+        const menuItem = menuItems.find(item =>
+          item.name.trim().toLowerCase() === productName.trim().toLowerCase()
+        );
+        return {
+          name: productName,
+          price: menuItem ? menuItem.price : 0,
+          quantity: quantity,
+        };
+      });
+      console.log("orderItems array:", orderItems); // LOG 4: orderItems array
+      setOrderHistory(orderItems);
+      // Recalculate total based on quantity
+      const calculatedTotal = orderItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+      console.log("calculatedTotal:", calculatedTotal); // LOG 5: calculatedTotal
+       setOrderTotal(calculatedTotal);
+    }, (error) => {
+      console.error("Erro ao ouvir atualizações do Firebase:", error);
+    });
+    setUnsubscribeOrderHistory(() => unsubscribe);
   };
 
   React.useEffect(() => {

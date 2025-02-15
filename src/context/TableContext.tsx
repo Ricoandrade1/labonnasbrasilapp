@@ -1,105 +1,69 @@
-import React, { createContext, useContext, useState, useEffect } from 'react'
-import { TableOrder, OrderItem } from '../types'
-import { useAuth, User } from './AuthContext'; // Importar useAuth e User
-import getSupabaseTables from '../lib/getSupabaseTables'
-import { clearFirebaseTables, addFirebaseOrder, onFirebaseTablesChange, updateFirebaseTable, updateFirebaseOrder, setFirebaseTableToOccupied, getFirebaseOrdersForTable, addFirebaseTable } from '../lib/api'
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { TableOrder, OrderItem } from '../types';
+import { useAuth, User } from './AuthContext';
+import { db, collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from "@/lib/firebase";
 
-export type TableStatus = "available" | "occupied" | "pending" | "closing"
+export type TableStatus = 'available' | 'occupied' | 'reserved' | 'closing' | 'pending';
 
 interface Table {
-  id: number
-  status: TableStatus
-  // orders: TableOrder[]  // Removed orders
-  // totalAmount: number // Removed totalAmount
-  occupants?: number;
-  timeSeated?: string;
-  server?: string;
-  orders: any[]; // Add orders property to Table interface
+  id: string | number;
+  tableNumber: string;
+  status: TableStatus;
+  orders: TableOrder[];
+  totalAmount: number;
 }
 
 import { OrderStatus } from '../types';
 
 interface TableContextType {
-  tables: Table[]
-  addOrdersToTable: (tableId: number, orders: TableOrder[], user: User | null, paymentMethod: string, source?: string) => void
-  updateOrderStatus: (tableId: number, orderId: string, newStatus: OrderStatus) => void
-  clearTable: (tableId: number) => void
-  getTableOrders: (tableId: number) => OrderItem[]
-  setAllTablesAvailable: () => void
-  forceUpdateTables: () => void
-  setTables: React.Dispatch<React.SetStateAction<Table[]>>
+  tables: Table[];
+  updateOrderStatus: (tableId: string, orderId: string, newStatus: OrderStatus) => void;
+  clearTable: (tableId: string) => void;
+  getTableOrders: (tableId: string) => OrderItem[];
+  setAllTablesAvailable: () => void;
+  forceUpdateTables: () => void;
+  setTables: React.Dispatch<React.SetStateAction<Table[]>>;
 }
 
-const TableContext = createContext<TableContextType | undefined>(undefined)
+const TableContext = createContext<TableContextType | undefined>(undefined);
 
 export const TableProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [tables, setTables] = useState<Table[]>([])
+  const [tables, setTables] = useState<Table[]>([]);
+  const auth = useAuth();
 
-  const auth = useAuth(); // Get auth context
   const calculateTotalAmount = (orders: TableOrder[]) => {
-    return orders.reduce((total, order) => total + order.total, 0)
-  }
-
-  const addOrdersToTable = async (tableId: number, newOrders: TableOrder[], user: User | null, paymentMethod: string, source?: string) => {
-    // 1. Fetch current tables state
-    const prevTables = tables; // Access the tables state directly
-
-    // 2. Map over tables and update the specific table
-    const updatedTables = prevTables.map(async table => {
-      if (table.id === tableId) {
-        const updatedOrders = [...table.orders, ...newOrders];
-
-        // Chamar addSupabaseOrder para cada novo pedido
-        for (const order of newOrders) {
-          const tableOrder = {
-            tableId: String(tableId),
-            responsibleName: user?.name || 'Unknown User', // Usar nome do usuário logado ou 'Unknown User'
-            items: order.items,
-            total: parseFloat(order.total.toFixed(2)),
-            timestamp: new Date().toISOString(),
-            status: 'kitchen-pending', // Definir status como 'kitchen-pending' ao adicionar o pedido
-            id: order.id, // Assuming order has an id
-          } as TableOrder;
-          await addSupabaseOrder(tableOrder, 'web');
-        }
-
-        setSupabaseTableToOccupied(tableId);
-        return {
-          ...table,
-          status: "occupied" as TableStatus,
-          orders: updatedOrders,
-          totalAmount: calculateTotalAmount(updatedOrders)
-        };
-      }
-      return table;
-    });
-
-    // 3. Await Promise.all to get resolved tables
-    const resolvedTables = await Promise.all(updatedTables);
-
-    // 4. Call setTables with resolvedTables
-    setTables(resolvedTables);
+    return orders.reduce((total, order) => total + order.total, 0);
   };
 
-  const updateOrderStatus = (tableId: number, orderId: string, newStatus: OrderStatus) => {
+  const updateOrderStatus = async (tableId: string, orderId: string, newStatus: OrderStatus) => {
     setTables(prevTables => {
       return prevTables.map(table => {
         if (table.id === tableId) {
-          updateSupabaseOrder(orderId, newStatus);
-          // The status of the table should not be directly updated based on the order status
-          // The table status should be updated based on business logic, e.g. when all orders are completed, the table becomes available
+          // Find the order and update its status
+          const updatedOrders = table.orders.map(order => {
+            if (order.id === orderId) {
+              return { ...order, status: newStatus };
+            }
+            return order;
+          });
+
+          // Update the order status in Firestore
+          const orderRef = doc(db, "Pedidos", orderId);
+          updateDoc(orderRef, { status: newStatus })
+            .then(() => console.log("Document successfully updated!"))
+            .catch((error) => console.error("Error updating document: ", error));
+
           return {
             ...table,
-            ...prevTables.find(table => table.id === tableId),
-            // status: newStatus, // Remove this line
-          }
+            orders: updatedOrders,
+          };
         }
-        return table
-      })
-    })
-  }
+        return table;
+      });
+    });
+  };
 
-  const clearTable = (tableId: number) => {
+  const clearTable = async (tableId: string) => {
     setTables(prevTables => {
       return prevTables.map(table => {
         if (table.id === tableId) {
@@ -108,62 +72,65 @@ export const TableProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             status: "available",
             orders: [],
             totalAmount: 0
-          }
+          };
         }
-        return table
-      })
-    })
-  }
+        return table;
+      });
+    });
+  };
 
-  const getTableOrders = (tableId: number) => {
-    const table = tables.find(t => t.id === tableId)
-    return table?.orders.flatMap(order => order.items) || []
-  }
+  const getTableOrders = (tableId: string) => {
+    const table = tables.find(t => t.id === tableId);
+    return table?.orders.flatMap(order => order.items) || [];
+  };
 
-  const [updateTables, setUpdateTables] = useState(0);
-
-  const setAllTablesAvailable = () => {
+  const setAllTablesAvailable = async () => {
     setTables(prevTables => {
       return prevTables.map(table => ({
         ...table,
         status: "available",
         orders: [],
         totalAmount: 0
-      }))
-    })
-    clearSupabaseTables();
-  }
+      }));
+    });
+
+    // Clear all tables in Firestore
+    const querySnapshot = await getDocs(collection(db, "Mesas"));
+    querySnapshot.forEach(async (document) => {
+      await deleteDoc(doc(db, "Mesas", document.id));
+    });
+  };
 
   const forceUpdateTables = () => {
-    setUpdateTables(prev => prev + 1);
-  }
+    // This function is not needed anymore
+  };
 
   useEffect(() => {
     const fetchTables = async () => {
-      const tablesData = await getSupabaseTables();
-      
-      // Fetch orders for each table
-      const tablesWithOrders = await Promise.all(
-        tablesData.map(async (table) => {
-          const orders = await getSupabaseOrdersForTable(table.id);
+      try {
+        const querySnapshot = await getDocs(collection(db, "Mesas"));
+        const tablesData: Table[] = querySnapshot.docs.map(doc => {
+          const data = doc.data();
           return {
-            ...table,
-            orders: orders, // Add orders to the table object
-          };
-        })
-      );
-      setTables(tablesWithOrders); // Set tables with orders
+            id: doc.id,
+            tableNumber: data.tableNumber || '',
+            status: data.status || 'available',
+            orders: data.orders || [],
+            totalAmount: data.totalAmount || 0,
+          } as Table;
+        });
+        setTables(tablesData);
+      } catch (error) {
+        console.error("Error fetching tables:", error);
+      }
     };
 
     fetchTables();
-
-    return () => {};
   }, []);
 
   return (
     <TableContext.Provider value={{
       tables,
-      addOrdersToTable,
       updateOrderStatus,
       clearTable,
       getTableOrders,
@@ -173,13 +140,13 @@ export const TableProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }}>
       {children}
     </TableContext.Provider>
-  )
-}
+  );
+};
 
 export const useTable = () => {
-  const context = useContext(TableContext)
+  const context = useContext(TableContext);
   if (context === undefined) {
-    throw new Error('useTable must be used within a TableProvider')
+    throw new Error('useTable must be used within a TableProvider');
   }
   return context;
-}
+};

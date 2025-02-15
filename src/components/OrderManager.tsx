@@ -2,7 +2,7 @@ import React, { useState, useEffect, createContext, useContext } from 'react';
 import { OrderItem } from '../types';
 import { useToast } from '../hooks/use-toast';
 import { toast } from 'react-toastify';
-import supabase from '../lib/supabaseClient';
+
 
 interface OrderManagerContextProps {
   currentOrders: OrderItem[];
@@ -21,15 +21,16 @@ export const OrderManagerProvider: React.FC<{ children: React.ReactNode }> = ({ 
   useEffect(() => {
     const fetchOrders = async () => {
       try {
-        const { data, error } = await supabase
-          .from('orders')
-          .select('*');
+        //const { data, error } = await supabase
+        //  .from('orders')
+        //  .select('*');
 
-        if (error) {
-          throw error;
-        }
+        //if (error) {
+        //  throw error;
+        //}
 
-        const parsedData = data ? data.map(item => {
+        const parsedData = [];
+        /*const parsedData = data ? data.map(item => {
           return {
             id: item.id,
             name: item.name,
@@ -42,7 +43,7 @@ export const OrderManagerProvider: React.FC<{ children: React.ReactNode }> = ({ 
             editablePrice: item.editablePrice === true,
             quantity: Number(item.quantity)
           };
-        }) : [];
+        }) : [];*/
 
         setCurrentOrders(parsedData || []);
       } catch (error: any) {
@@ -55,13 +56,13 @@ export const OrderManagerProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
 const addItem = async (item: OrderItem) => {
   try {
-    const { data, error } = await supabase
-      .from('orders')
-      .insert([item]);
+    //const { data, error } = await supabase
+    //  .from('orders')
+    //  .insert([item]);
 
-    if (error) {
-      throw error;
-    }
+    //if (error) {
+    //  throw error;
+    //}
 
     setCurrentOrders(prev => {
       const existingItem = prev.find(i => i.id === item.id);
@@ -79,14 +80,14 @@ const addItem = async (item: OrderItem) => {
 
   const removeItem = async (itemId: string) => {
     try {
-      const { data, error } = await supabase
-        .from('orders')
-        .delete()
-        .match({ id: itemId });
+      //const { data, error } = await supabase
+      //  .from('orders')
+      //  .delete()
+      //  .match({ id: itemId });
 
-      if (error) {
-        throw error;
-      }
+      //if (error) {
+      //  throw error;
+      //}
 
       setCurrentOrders(prev => {
         const updatedOrders = [...prev.filter(item => item.id !== itemId)];
@@ -100,14 +101,14 @@ const addItem = async (item: OrderItem) => {
 
   const updateQuantity = async (itemId: string, quantity: number) => {
     try {
-      const { data, error } = await supabase
-        .from('orders')
-        .update({ quantity })
-        .match({ id: itemId });
+      //const { data, error } = await supabase
+      //  .from('orders')
+      //  .update({ quantity })
+      //  .match({ id: itemId });
 
-      if (error) {
-        throw error;
-      }
+      //if (error) {
+      //  throw error;
+      //}
 
       setCurrentOrders(prev => {
         const updatedOrders = prev.map(item => {
@@ -126,14 +127,14 @@ const addItem = async (item: OrderItem) => {
 
   const clearOrders = async () => {
     try {
-      const { data, error } = await supabase
-        .from('orders')
-        .delete()
-        .neq('id', null);
+      //const { data, error } = await supabase
+      //  .from('orders')
+      //  .delete()
+      //  .neq('id', null);
 
-      if (error) {
-        throw error;
-      }
+      //if (error) {
+      //  throw error;
+      //}
 
       setCurrentOrders([]);
     } catch (error: any) {

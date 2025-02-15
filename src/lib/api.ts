@@ -1,163 +1,128 @@
-import app from "./supabaseClient";
-import { getFirestore, collection, getDocs, deleteDoc, doc, addDoc, onSnapshot, query, updateDoc, where } from "firebase/firestore";
-import { OrderItem, TableOrder } from "../types";
+import {
+  auth,
+  db,
+  addTable,
+  addOrder,
+  addProduct,
+  addTransaction,
+  getTables,
+  clearOrders,
+  clearTables,
+  updateTableStatus,
+  onTablesChange,
+  getDocs,
+  collection,
+  deleteDoc,
+  doc,
+  updateDoc,
+  addDoc,
+  createUniqueTables,
+  addTableWithId,
+} from "./firebase";
+import { TableOrder, OrderItem } from "../types";
+import { User } from "@/context/AuthContext";
+import { TableStatus } from "@/context/TableContext";
+import { query, where, orderBy } from "firebase/firestore";
 
-export const clearFirebaseTables = async () => {
-  const db = getFirestore(app);
-  const tablesCollection = collection(db, 'tables');
-
+const addOrderToFirebase = async (tableId: string, order: TableOrder, user: User | null, paymentMethod: string) => {
   try {
-    const querySnapshot = await getDocs(tablesCollection);
-    querySnapshot.forEach(async (document) => {
-      if (document.data().id !== 0) { // Assuming 'id' field exists in your documents
-        await deleteDoc(doc(db, 'tables', document.id));
-      }
+    const docRef = await addDoc(collection(db, "Pedidos"), {
+      tableId: tableId,
+      items: order.items.map(item => ({
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity
+      })),
+      total: order.total,
+      paymentMethod: paymentMethod,
+      timestamp: new Date().toISOString(),
+      responsibleName: order.responsibleName, // Use order.responsibleName instead of user?.name || "Unknown User"
+      status: "pending",
+      source: "web",
     });
-    console.log("Successfully cleared all tables in Firebase");
-  } catch (error) {
-    console.error("Error clearing tables:", error);
-  }
-};
+    console.log("api.ts - addOrderToFirebase - Document written with ID: ", docRef.id);
 
-export const addFirebaseOrder = async (tableOrder: TableOrder, source: string) => {
-  console.log("Adding order to Firebase:", tableOrder);
-  console.log("tableOrder data:", tableOrder); // Log tableOrder data
-  console.log("tableOrder.items (JSON):", JSON.stringify(tableOrder.items)); // Log items as JSON string
+    // Atualizar o histórico de pedidos da mesa
+    const orderHistory = await getFirebaseOrderHistory(tableId);
+    const tableRef = doc(db, "Mesas", tableId);
+    await updateDoc(tableRef, { orderHistory: orderHistory });
+    console.log(`api.ts - addOrderToFirebase - Table ${tableId} order history updated`);
 
-  const db = getFirestore(app);
-  try {
-    const docRef = await addDoc(collection(db, 'orders'), {
-      tableId: tableOrder.tableId,
-      responsibleName: tableOrder.responsibleName,
-      items: JSON.stringify(tableOrder.items), // Store items as JSON
-      total: tableOrder.total,
-      timestamp: tableOrder.timestamp,
-      status: tableOrder.status, // Add status here
-      id: tableOrder.id,
-      source: source,
-      paymentMethod: tableOrder.paymentMethod, // Include paymentMethod
-    });
-
-    console.log("Document written with ID: ", docRef.id);
-  } catch (error) {
-    console.error("Error adding order:", error);
-  }
-};
-
-export const onFirebaseTablesChange = (callback: (tables: any[]) => void) => {
-  const db = getFirestore(app);
-  const tablesCollection = collection(db, 'tables');
-
-  const unsubscribe = onSnapshot(tablesCollection, (querySnapshot) => {
-    const tables: any[] = [];
-    querySnapshot.forEach((doc) => {
-      tables.push(doc.data());
-    });
-    callback(tables);
-    console.log("Firebase tables data updated!"); // Log Firebase update
-  }, (error) => {
-    console.error("Error fetching tables from Firebase:", error);
-  });
-
-  return unsubscribe;
-};
-
-export const onFirebaseOrdersChange = (callback: (payload: any) => void) => {
-  const db = getFirestore(app);
-  const ordersCollection = collection(db, 'orders');
-
-  const unsubscribe = onSnapshot(ordersCollection, (querySnapshot) => {
-    querySnapshot.docChanges().forEach((change) => {
-      if (change.type === "added" || change.type === "modified" || change.type === "removed") {
-        console.log("Firebase order data changed:", change);
-        callback(change); // Pass the change object to the callback
-      }
-    });
-    console.log("Firebase orders data updated!"); // Log Firebase update
-  }, (error) => {
-    console.error("Error fetching orders from Firebase:", error);
-  });
-
-  return unsubscribe;
-};
-
-
-export const updateFirebaseTable = async (tableId: number, newStatus: string) => {
-  const db = getFirestore(app);
-  try {
-    const tableDocRef = doc(db, 'tables', String(tableId)); // Firestore document IDs are strings
-    await updateDoc(tableDocRef, { status: newStatus });
-    console.log("Successfully updated table in Firebase");
-  } catch (error) {
-    console.error("Error updating table:", error);
-  }
-};
-
-export const updateFirebaseOrder = async (orderId: string, newStatus: string) => {
-  const db = getFirestore(app);
-  try {
-    const orderDocRef = doc(db, 'orders', orderId);
-    await updateDoc(orderDocRef, { status: newStatus });
-    console.log("Successfully updated order in Firebase");
-  } catch (error) {
-    console.error("Error updating order:", error);
-  }
-};
-
-export const setFirebaseTableToOccupied = async (tableId: number) => {
-  const db = getFirestore(app);
-  try {
-    const tableDocRef = doc(db, 'tables', String(tableId));
-    await updateDoc(tableDocRef, { status: "occupied" });
-    console.log("Successfully set table to occupied in Firebase");
-  } catch (error) {
-    console.error("Error setting table to occupied:", error);
-  }
-};
-
-export const getFirebaseOrdersForTable = async (tableId: number) => {
-  const db = getFirestore(app);
-  try {
-    const ordersCollection = collection(db, 'orders');
-    const q = query(ordersCollection, where('tableId', '==', tableId));
-    const querySnapshot = await getDocs(q);
-    const orders: any[] = [];
-    querySnapshot.forEach((doc) => {
-      orders.push(doc.data());
-    });
-    console.log("Successfully fetched orders for table from Firebase");
-    return orders;
-  } catch (error) {
-    console.error("Error fetching orders for table:", error);
-    return [];
-  }
-};
-
-export const getFirebaseMenuItems = async () => {
-  const db = getFirestore(app);
-  try {
-    const menuItemsCollection = collection(db, 'menu_items');
-    const querySnapshot = await getDocs(menuItemsCollection);
-    const menuItems: any[] = [];
-    querySnapshot.forEach((doc) => {
-      menuItems.push(doc.data());
-    });
-    console.log("Successfully fetched menu items from Firebase");
-    return menuItems;
-  } catch (error) {
-    console.error("Error fetching menu items:", error);
-    return [];
-  }
-};
-
-export const addFirebaseTable = async (tableData: { tableNumber: string; status: string }) => {
-  const db = getFirestore(app);
-  try {
-    const docRef = await addDoc(collection(db, 'tables'), tableData);
-    console.log("Successfully added table to Firebase with ID: ", docRef.id);
-    return { data: { ...tableData, id: docRef.id } }; // Return similar data structure
-  } catch (error) {
-    console.error("Error adding table:", error);
+    return docRef.id;
+  } catch (e) {
+    console.error("api.ts - addOrderToFirebase - Error adding document: ", e);
     return null;
   }
+};
+
+const updateTableStatusInFirebase = async (tableId: string, status: TableStatus) => {
+  try {
+    const tableRef = doc(db, "Mesas", tableId);
+    if (status === "occupied") {
+      await updateDoc(tableRef, { status: status, openingTime: new Date().toISOString() });
+    } else {
+      await updateDoc(tableRef, { status: status });
+    }
+    console.log(`api.ts - updateTableStatusInFirebase - Table ${tableId} status updated to ${status}`);
+  } catch (e) {
+    console.error("api.ts - updateTableStatusInFirebase - Error updating table status: ", e);
+  }
+};
+
+const getFirebaseOrderHistory = async (tableId: string) => {
+  try {
+    const querySnapshot = await getDocs(
+      query(
+        collection(db, "Pedidos"),
+        where("tableId", "==", tableId),
+        orderBy("timestamp", "desc")
+      )
+    );
+    const orders: any[] = [];
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      const items = typeof data.items === 'string' ? JSON.parse(data.items) : data.items;
+      orders.push({
+        id: doc.id,
+        responsibleName: data.responsibleName,
+        items: items,
+        total: data.total,
+        timestamp: data.timestamp,
+        status: data.status,
+      });
+    });
+    console.log(`api.ts - getFirebaseOrderHistory - Successfully fetched order history for table ${tableId} from Firebase`);
+    console.log(`api.ts - getFirebaseOrderHistory - orders:`, orders);
+    return orders;
+  } catch (error) {
+    console.error("api.ts - getFirebaseOrderHistory - Error fetching order history:", error);
+    return [];
+  }
+};
+
+export {
+  auth,
+  db,
+  addTable,
+  addOrder,
+  addProduct,
+  addTransaction,
+  getTables,
+  clearOrders,
+  clearTables,
+  updateTableStatus,
+  onTablesChange,
+  getDocs,
+  collection,
+  deleteDoc,
+  doc,
+  updateDoc,
+  addDoc,
+  createUniqueTables,
+  addTableWithId,
+  addOrderToFirebase,
+  updateTableStatus as updateOrderStatus,
+  updateTableStatusInFirebase,
+  getFirebaseOrderHistory
 };

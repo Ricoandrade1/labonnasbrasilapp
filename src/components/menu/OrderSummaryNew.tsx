@@ -6,7 +6,18 @@ import { MenuItem, OrderItem, TableOrder } from "../../types";
 import React, { useState, useEffect } from "react";
 import { menuItems } from "../../data/menu";
 import { useTable } from "@/context/TableContext";
-import supabase from "@/lib/supabaseClient";
+import { useSearchParams } from "react-router-dom";
+import { getFirebaseOrderHistory } from "@/lib/api";
+
+const createMenuItemMap = () => {
+  const menuItemMap: { [key: string]: MenuItem } = {};
+  for (const category in menuItems) {
+    menuItems[category].forEach(item => {
+      menuItemMap[item.id] = item;
+    });
+  }
+  return menuItemMap;
+};
 
 interface OrderSummaryProps {
   orderItems: OrderItem[];
@@ -15,7 +26,6 @@ interface OrderSummaryProps {
   onRemoveItem: (itemId: string) => void;
   onSubmit: () => void;
   tableParam: string | null;
-  orderHistory: TableOrder[];
 }
 
 const OrderSummaryNew = ({
@@ -24,16 +34,46 @@ const OrderSummaryNew = ({
   onTableResponsibleChange,
   onRemoveItem,
   onSubmit,
-  tableParam,
-  orderHistory
+  tableParam
 }: OrderSummaryProps) => {
   console.log("OrderSummaryNew component rendered");
   const [responsibleNames, setResponsibleNames] = useState<string[]>([]);
+  const [orderHistory, setOrderHistory] = useState<TableOrder[]>([]);
   const { tables: tableContextTables } = useTable();
+  const [searchParams] = useSearchParams();
+  const menuItemMap = createMenuItemMap();
 
   useEffect(() => {
     setResponsibleNames(tableResponsible ? [tableResponsible] : []);
   }, [tableResponsible]);
+
+  useEffect(() => {
+    const fetchOrderHistory = async () => {
+      if (tableParam) {
+        const tableId = parseInt(tableParam, 10);
+        if (!isNaN(tableId)) {
+          const currentTable = tableContextTables.find(table => table.id === tableId);
+          if (currentTable) {
+            // Fetch order history from Firebase
+            const orders = await getFirebaseOrderHistory(tableId.toString());
+
+            const tableOrders = orders.map(order => ({
+              id: order.id,
+              tableId: tableParam,
+              responsibleName: order.responsibleName,
+              items: order.items,
+              timestamp: order.timestamp,
+              status: order.status,
+              total: order.total,
+            } as TableOrder));
+            setOrderHistory(tableOrders || []);
+          }
+        }
+      }
+    };
+
+    fetchOrderHistory();
+  }, [searchParams, tableContextTables, tableParam]);
 
   const getTotalPrice = () => {
     if (!orderItems || orderItems === null || orderItems === undefined || orderItems.length === 0) {
@@ -137,45 +177,6 @@ const OrderSummaryNew = ({
                 Enviar para Cozinha
               </Button>
             </div>
-          </CardContent>
-        </Card>
-
-        <Card className="mt-8 border-0 shadow-lg bg-white/70 backdrop-blur-sm">
-          <CardHeader className="border-b">
-            <CardTitle className="text-xl font-semibold">Histórico de Pedidos</CardTitle>
-          </CardHeader>
-          <CardContent className="p-4">
-            <div className="space-y-3">
-              <div className="border-b pb-2">
-              {orderHistory && orderHistory.map((order) => (
-                <div key={order.id} className="space-y-2 pb-2">
-                  <p className="text-sm text-gray-600">Responsável: {order.responsibleName || "Não especificado"}</p>
-                  {order.items && order.items.map((item) => {
-                    let menuItem: MenuItem | undefined;
-                    for (const category in menuItems) {
-                      menuItem = menuItems[category]?.find((menuItem) => menuItem.id === item.id);
-                      if (menuItem) break;
-                    }
-
-                    if (!menuItem) {
-                      return <div>Item não encontrado no menu</div>;
-                    }
-                    return (
-                      <div key={item.id} className="flex justify-between items-center bg-gray-50 p-2 rounded-lg">
-                        <div className="flex flex-col">
-                          <span className="font-medium">{menuItem.name}</span>
-                          <span className="text-sm text-gray-500">Qtd: {item.quantity}</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
-            <div className="pt-2">
-              <p className="text-sm font-semibold text-gray-700">Total Geral: €{orderHistory.length > 0 ? grandTotal.toFixed(2) : "0,00"}</p>
-            </div>
-          </div>
           </CardContent>
         </Card>
       </div>

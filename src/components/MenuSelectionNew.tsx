@@ -12,14 +12,15 @@ import { OrderManagerProvider } from "./OrderManager";
 import useOrderManager from "./OrderManager";
 import { useTable } from '../context/TableContext'; // Corrected import path
 import { useAuth } from '../context/AuthContext'; // Corrected import path
-import { addFirebaseOrder } from '../lib/api';
+import { addOrderToFirebase, updateTableStatusInFirebase, getFirebaseOrderHistory } from "@/lib/api";
+import OrderHistory from "./menu/OrderHistory";
 
 const MenuSelectionNew = () => {
   console.log("MenuSelectionNew component rendered");
   const [searchParams] = useSearchParams();
   const { currentOrders, addItem, removeItem, updateQuantity, clearOrders, getTotalPrice } = useOrderManager();
   const [responsibleName, setResponsibleName] = useState("");
-  const { addOrdersToTable, getTableOrders, updateOrderStatus, clearTable, tables: tableContextTables, setTables } = useTable(); // Added clearTable and tables from context
+  const { getTableOrders, updateOrderStatus, clearTable, tables: tableContextTables, setTables } = useTable(); // Added clearTable and tables from context
   const [orderHistory, setOrderHistory] = useState<TableOrder[]>([]);
   const { user } = useAuth(); // Get auth context and user
 
@@ -31,31 +32,16 @@ const MenuSelectionNew = () => {
   const tableParam = searchParams.get("table") || searchParams.get("tablecaixa");
 
   useEffect(() => {
-    const fetchOrderHistory = () => {
+    const fetchOrderHistory = async () => {
       if (tableParam) {
-        const tableId = parseInt(tableParam, 10);
-        if (!isNaN(tableId)) {
-          const currentTable = tableContextTables.find(table => table.id === tableId);
-          if (currentTable && currentTable.orders) { // Check if currentTable and currentTable.orders exist
-            const tableOrders = currentTable.orders.map(order => ({
-              id: order.id,
-              tableId: tableParam,
-              responsibleName: order.responsibleName,
-              items: order.items,
-              timestamp: order.timestamp,
-              status: order.status,
-              total: order.total,
-            } as TableOrder));
-            setOrderHistory(tableOrders);
-          } else {
-            setOrderHistory([]); // Set orderHistory to empty array if no orders found
-          }
-        }
+        const tableId = tableParam;
+        const orderHistory = await getFirebaseOrderHistory(tableId);
+        setOrderHistory(orderHistory);
       }
     };
 
     fetchOrderHistory();
-  }, [searchParams, tableContextTables, currentOrders]); // Added currentOrders to dependency array
+  }, [searchParams]);
 
   console.log("MenuSelectionNew - useEffect - currentOrders", currentOrders);
 
@@ -94,6 +80,8 @@ const MenuSelectionNew = () => {
       return;
     }
 
+    const productIds = currentOrders.map(item => item.id);
+
     const tableOrder: TableOrder = {
       id: uuidv4(),
       tableId: tableParam || "1",
@@ -102,13 +90,25 @@ const MenuSelectionNew = () => {
       timestamp: new Date().toISOString(),
       status: "pending",
       total: getTotalPrice(),
-      paymentMethod: 'cash',
-      source: 'web',
     };
 
-    setOrderHistory(prev => [...prev, tableOrder]);
+    const tableOrderWithProducts: any = {
+      ...tableOrder,
+      products: JSON.stringify(productIds),
+    };
 
-    addFirebaseOrder(tableOrder, tableOrder.source);
+    setOrderHistory(prev => [...prev, tableOrderWithProducts]);
+
+    const orderId = await addOrderToFirebase(tableOrder.tableId, tableOrderWithProducts, user, 'cash');
+
+    if (orderId) {
+      console.log("MenuSelectionNew - handleSendToKitchen - Order added to Firebase with ID:", orderId);
+    } else {
+      console.error("MenuSelectionNew - handleSendToKitchen - Error adding order to Firebase");
+    }
+
+    // Update table status in firebase
+    updateTableStatusInFirebase(tableOrder.tableId, "occupied");
 
     // set table status to occupied
     setTables(prevTables => {
@@ -164,10 +164,11 @@ const MenuSelectionNew = () => {
               onSubmit={handleSendToKitchen}
               tableParam={tableParam}
             />
+            <OrderHistory orders={orderHistory} />
           </div>
         </div>
       </div>
-    </div>
+    </div >
   );
 };
 

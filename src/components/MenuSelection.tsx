@@ -4,7 +4,7 @@ import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { toast } from "react-toastify";
 import { MenuSection } from "./menu/MenuSection";
-import { OrderSummaryNew } from "./menu/OrderSummaryNew";
+import OrderSummaryNew from "./menu/OrderSummaryNew";
 import { menuItems } from "../data/menu";
 import { MenuItem, TableOrder } from "../types";
 import { v4 as uuidv4 } from "uuid";
@@ -93,6 +93,20 @@ const MenuSelection = () => {
       total: tableOrder.total,
       paymentMethod: "pending",
       timestamp: tableOrder.timestamp,
+      responsibleName: tableOrder.responsibleName,
+      status: "pending",
+      source: "web",
+    });
+
+    console.log("Dados do pedido para o Firebase:", {
+      tableId: tableOrder.tableId,
+      products: tableOrder.items.map((item) => item.name),
+      total: tableOrder.total,
+      paymentMethod: "pending",
+      timestamp: tableOrder.timestamp,
+      responsibleName: tableOrder.responsibleName,
+      status: "pending",
+      source: "web",
     });
 
     console.log("Sending order to kitchen:", tableOrder);
@@ -197,6 +211,7 @@ const MenuSelection = () => {
                   onTableResponsibleChange={setResponsibleName}
                   onRemoveItem={removeItem}
                   onSubmit={handleSendToKitchen}
+                  tableParam={tableNumber?.toString() || null}
                 />
               </div>
             </div>

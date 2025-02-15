@@ -9,7 +9,6 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
-    logLevel: 'debug',
   },
   build: {
     outDir: 'dist',
