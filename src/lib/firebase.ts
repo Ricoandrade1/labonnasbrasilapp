@@ -1,6 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore, collection, addDoc, doc, getDocs, updateDoc, onSnapshot, deleteDoc, setDoc } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
+import { getAnalytics } from "firebase/analytics";
 import { TableStatus } from "@/context/TableContext";
 
 const firebaseConfig = {
@@ -14,6 +15,7 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
 const auth = getAuth(app); // Inicializar auth
 const db = getFirestore(app);
 
