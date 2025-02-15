@@ -15,6 +15,7 @@ interface Table {
   orders: any[];
   totalAmount: number;
   openingTime?: string;
+  orderHistory?: any[];
 }
 
 const calculateAverageTime = (tables: Table[]): string => {
@@ -49,18 +50,30 @@ const Tables = () => {
     try {
       const querySnapshot = await getDocs(collection(db, "Mesas"));
       const tablesData = await Promise.all(querySnapshot.docs.map(async doc => {
-const data = doc.data() as Omit<Table, 'id'>;
+const data = doc.data() as any;
           const tableData: Table = {
             id: doc.id,
             tableNumber: data.tableNumber || '',
             status: (data.status || 'available') as TableStatus,
             totalAmount: data.totalAmount || 0,
             openingTime: data.openingTime || null,
-            orders: data.orderHistory || []
+            orders: data.orderHistory || [],
           };
           return tableData;
         }));
+
+        // Verificar e corrigir números de mesa duplicados
+        const tableNumbers = new Set();
+        tablesData.forEach((table, index) => {
+          if (tableNumbers.has(table.tableNumber)) {
+            table.tableNumber = `${table.tableNumber} (${index + 1})`;
+          } else {
+            tableNumbers.add(table.tableNumber);
+          }
+        });
+
         console.log("Tables.tsx - Fetched tables:", tablesData);
+        console.log("Tables.tsx - Fetched tables length:", tablesData.length);
         setTables(tablesData);
       } catch (error) {
         console.error("Tables.tsx - Error fetching tables:", error);
@@ -70,6 +83,7 @@ const data = doc.data() as Omit<Table, 'id'>;
     };
 
   useEffect(() => {
+    console.log("Tables.tsx - useEffect triggered");
     fetchTables();
   }, [setTables]);
 

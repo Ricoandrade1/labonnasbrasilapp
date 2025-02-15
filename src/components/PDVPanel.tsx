@@ -51,30 +51,33 @@ const PDVPanel = () => {
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = React.useState<boolean>(false);
   const [unsubscribeOrderHistory, setUnsubscribeOrderHistory] = React.useState<() => void | undefined>();
 
+  const calculateTotal = (items: OrderItem[]): number => {
+    return items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+  };
 
   const loadTablesFromFirebase = async () => {
     try {
       const dbInstance = getFirestore();
-      // Carregando mesas de 'statusdemesa' do Firebase
-      const tablesCollection = collection(dbInstance, "statusdemesa");
+      // Carregando mesas de 'Pedidos' do Firebase
+      const tablesCollection = collection(dbInstance, "Pedidos");
       const occupiedTablesQuery = query(tablesCollection);
       const unsubscribe = onSnapshot(occupiedTablesQuery, (tablesSnapshot) => {
-        const firebaseTables = tablesSnapshot.docs.map((doc) => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            tableNumber: data.tableId, // Use tableId from firebase data
-            status: data.status,
-            total: data.total,
-            products: data.products, // Assuming products is an array
-            responsibleName: data.responsibleName,
-            timestamp: data.timestamp,
-          } as OpenTable;
-        });
-        console.log("Firebase tables data before setOpenTables:", firebaseTables);
-        // Log firebaseTables data
-        console.log("firebaseTables:", JSON.stringify(firebaseTables, null, 2));
-        // Use a Map to group tables by tableNumber
+        const firebaseTables = tablesSnapshot.docs
+          .map((doc) => {
+            const data = doc.data();
+            return {
+              id: doc.id,
+              tableNumber: data.tableId, // Use tableId from firebase data
+              status: data.status,
+              total: data.total,
+              products: data.products, // Assuming products is an array
+              responsibleName: data.responsibleName,
+              timestamp: data.timestamp,
+            } as OpenTable;
+          })
+          .filter(table => /^\d+$/.test(table.tableNumber)) // Filter out invalid table IDs
+
+        // Group tables by tableNumber
         const tablesMap = new Map<string, OpenTable[]>();
         firebaseTables.forEach(table => {
           const existingTablesForNumber = tablesMap.get(table.tableNumber) || [];
@@ -83,14 +86,22 @@ const PDVPanel = () => {
         });
 
         // Convert the map to an array of tables for setOpenTables
-        const groupedTables = Array.from(tablesMap.values()).map(tables => tables[0]); // Use the first table in each group for display
-        console.log("groupedTables:", JSON.stringify(groupedTables, null, 2));
+        const groupedTables = Array.from(tablesMap.values()).map(tables => {
+          // Sort tables within each group by timestamp
+          tables.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+          return tables[0]; // Use the first table in each group for display
+        }).sort((a, b) => parseInt(a.tableNumber) - parseInt(b.tableNumber)); // Sort by table number
+
+        console.log("Firebase tables data before setOpenTables:", groupedTables);
+        // Log firebaseTables data
+        console.log("firebaseTables:", JSON.stringify(groupedTables, null, 2));
         setOpenTables(groupedTables);
         console.log("PDVPanel - loadTablesFromFirebase - setOpenTables:", groupedTables);
       }, (error) => {
         console.error("Erro ao ouvir atualizações do Firebase:", error);
         console.log("Firebase error details:", error);
       });
+      console.log("loadTablesFromFirebase - openTables:", openTables);
 
       // Cleanup listener on unmount
       return () => unsubscribe();
@@ -107,6 +118,7 @@ const PDVPanel = () => {
 
   const handleTableSelect = (table: OpenTable) => {
     setSelectedTable(table);
+    console.log("handleTableSelect - table:", table);
     setOrderHistoryFromFirebase(table.tableNumber);
   };
 
@@ -122,46 +134,37 @@ const PDVPanel = () => {
     }
 
     const dbInstance = getFirestore();
-    const tablesCollection = collection(dbInstance, "statusdemesa");
+    const tablesCollection = collection(dbInstance, "Pedidos");
     const occupiedTablesQuery = query(tablesCollection, where("tableId", "==", tableNumber));
 
     const unsubscribe = onSnapshot(occupiedTablesQuery, (querySnapshot) => {
-      console.log("onSnapshot callback triggered for table:", tableNumber); // LOG 1: onSnapshot triggered
-      console.log("querySnapshot data:", querySnapshot); // LOG 2: querySnapshot data
+      console.log("onSnapshot callback triggered for table:", tableNumber);
+      console.log("querySnapshot data:", querySnapshot);
 
-      let allProducts: string[] = [];
-      let total = 0;
+      let orderItems: OrderItem[] = [];
+      let calculatedTotal = 0;
+
       querySnapshot.forEach((doc) => {
         const data = doc.data();
-        const products = data.products as string[];
-        if (products && Array.isArray(products)) {
-          allProducts = allProducts.concat(products);
+        console.log("Document data:", data);
+        const items = data.items as any[];
+        if (items && Array.isArray(items)) {
+          orderItems = orderItems.concat(items.map(item => ({
+            name: item.name,
+            price: item.price,
+            quantity: item.quantity,
+          })));
+        }
+        if (data !== null && data.total !== undefined) {
+          calculatedTotal += data.total;
         }
       });
 
-      console.log("allProducts array:", allProducts); // LOG 3: allProducts array
-
-      const productCounts: { [name: string]: number } = {};
-      allProducts.forEach(productName => {
-        productCounts[productName] = (productCounts[productName] || 0) + 1;
-      });
-
-      const orderItems: OrderItem[] = Object.entries(productCounts).map(([productName, quantity]) => {
-        const menuItem = menuItems.find(item =>
-          item.name.trim().toLowerCase() === productName.trim().toLowerCase()
-        );
-        return {
-          name: productName,
-          price: menuItem ? menuItem.price : 0,
-          quantity: quantity,
-        };
-      });
-      console.log("orderItems array:", orderItems); // LOG 4: orderItems array
+      console.log("calculatedTotal:", calculatedTotal);
+      console.log("orderItems array:", orderItems);
       setOrderHistory(orderItems);
-      // Recalculate total based on quantity
-      const calculatedTotal = orderItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
-      console.log("calculatedTotal:", calculatedTotal); // LOG 5: calculatedTotal
-       setOrderTotal(calculatedTotal);
+      console.log("setOrderHistoryFromFirebase - orderHistory:", orderItems);
+      setOrderTotal(calculatedTotal);
     }, (error) => {
       console.error("Erro ao ouvir atualizações do Firebase:", error);
     });
@@ -213,7 +216,7 @@ const PDVPanel = () => {
               {openTables.map((table) => (
                 <Card
                   key={table.id}
-                  className={`relative group p-4 rounded-lg border transition-all duration-200 bg-rose-100 !bg-rose-100 border-rose-200 hover:bg-rose-200 hover:shadow-md`}
+                  className={`relative group p-4 rounded-lg border transition-all duration-200 ${selectedTable?.tableNumber === table.tableNumber ? 'bg-blue-300 !bg-blue-300 border-blue-400 hover:bg-blue-400' : 'bg-rose-100 !bg-rose-100 border-rose-200 hover:bg-rose-200'} hover:shadow-md`}
                   onClick={() => handleTableSelect(table)}
                 >
                   <div className="flex flex-col items-center gap-2">
@@ -250,7 +253,7 @@ const PDVPanel = () => {
 
           {/* Total Display */}
           <div className="p-4 border rounded-md">
-            <h3>Total do Pedido: € {orderTotal.toFixed(2)}</h3>
+            <h3>Total do Pedido: € {Number(orderTotal).toFixed(2)}</h3>
           </div>
           {selectedTable && (
           <div className="mt-4">

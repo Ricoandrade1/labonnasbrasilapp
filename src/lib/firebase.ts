@@ -113,14 +113,17 @@ const addTransaction = async (transactionData: {
 
 const getTables = async () => {
   try {
-    const querySnapshot = await getDocs(collection(db, "table"));
-    const tables = querySnapshot.docs.map(doc => ({
-      id: Number(doc.id),
-      ...doc.data(),
-      status: Math.random() < 0.5 ? "available" : "occupied" as TableStatus,
-      orders: [],
-      totalAmount: 0
-    }));
+    const querySnapshot = await getDocs(collection(db, "Mesas"));
+    const tables = querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        tableNumber: data.tableNumber,
+        total: data.totalAmount || 0,
+        status: data.status,
+        orders: data.orders || []
+      };
+    });
     return tables;
   } catch (e) {
     console.error("Error getting documents: ", e);

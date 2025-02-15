@@ -21,6 +21,8 @@ import { useNavigate } from "react-router-dom";
 import PDVPanel from "@/components/PDVPanel";
 import { addTable } from "@/lib/firebase";
 
+import { getTables } from "@/lib/firebase";
+
 interface OpenTable {
   id: string;
   tableNumber: string;
@@ -30,11 +32,16 @@ interface OpenTable {
 
 const Cashier = () => {
   const navigate = useNavigate();
-  const [openTables, setOpenTables] = React.useState<OpenTable[]>([
-    { id: "1", tableNumber: "1", total: 150.00, status: "occupied" },
-    { id: "2", tableNumber: "2", total: 200.00, status: "occupied" },
-    { id: "3", tableNumber: "3", total: 75.00, status: "available" },
-  ]);
+  const [openTables, setOpenTables] = React.useState<OpenTable[]>([]);
+
+  React.useEffect(() => {
+    const fetchTables = async () => {
+      const tables = await getTables();
+      setOpenTables(tables);
+    };
+
+    fetchTables();
+  }, []);
 
   return (
     <div className="container mx-auto py-6 space-y-6">

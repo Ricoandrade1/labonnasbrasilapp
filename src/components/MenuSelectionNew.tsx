@@ -82,9 +82,15 @@ const MenuSelectionNew = () => {
 
     const productIds = currentOrders.map(item => item.id);
 
+    const tableId = tableParam || "1";
+    if (!/^\d+$/.test(tableId)) {
+      toast.error("ID da mesa inválido. Por favor, use um número inteiro.");
+      return;
+    }
+
     const tableOrder: TableOrder = {
       id: uuidv4(),
-      tableId: tableParam || "1",
+      tableId: tableId,
       responsibleName: responsibleName, // Responsible name should be here
       items: currentOrders,
       timestamp: new Date().toISOString(),
