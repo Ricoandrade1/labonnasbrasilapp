@@ -43,11 +43,6 @@ const addOrderToFirebase = async (tableId: string, order: TableOrder, user: User
     });
     console.log("api.ts - addOrderToFirebase - Document written with ID: ", docRef.id);
 
-    // Atualizar o histórico de pedidos da mesa
-    const orderHistory = await getFirebaseOrderHistory(tableId);
-    const tableRef = doc(db, "Mesas", tableId);
-    await updateDoc(tableRef, { orderHistory: orderHistory });
-    console.log(`api.ts - addOrderToFirebase - Table ${tableId} order history updated`);
 
     return docRef.id;
   } catch (e) {

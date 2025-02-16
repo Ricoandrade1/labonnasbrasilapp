@@ -1,8 +1,55 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // Funções dos usuários
+    function isGarcom() {
+      return request.auth.token.role == 'garcom';
+    }
+
+    function isCaixa() {
+      return request.auth.token.role == 'caixa';
+    }
+
+    function isGerente() {
+      return request.auth.token.role == 'gerente';
+    }
+
+    function getRole() {
+      return request.auth.token.role;
+    }
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Garçom: Acesso ao menu de mesas e permissão para realizar pedidos
+    match /mesas/{mesaId} {
+      allow read: if true;
+      allow update: if isAuthenticated() && isGarcom() && getRole() == 'garcom';
+    }
+
+    match /pedidos/{pedidoId} {
+      allow create: if isAuthenticated() && isGarcom()  && getRole() == 'garcom';
+    }
+
+    // Caixa: Permissões do garçom, além de realizar fechamento de caixa e mesas
+    match /caixa/{caixaId} {
+      allow read, write: if isAuthenticated() && isCaixa() && getRole() == 'caixa';
+    }
+
+    match /mesas/{mesaId} {
+      allow update: if isAuthenticated() && isCaixa() && getRole() == 'caixa';
+    }
+
+    // Ao cancelar uma mesa, uma notificação deve ser enviada ao gerente e a solicitação salva na coleção cancelamentodemesa.
+    match /cancelamentodemesa/{cancelamentoId} {
+      allow create: if isAuthenticated() && isCaixa()  && getRole() == 'caixa';
+    }
+
+    // Gerente: Acesso total ao sistema e visualização de todas as operações
     match /{document=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if true;
     }
   }
 }

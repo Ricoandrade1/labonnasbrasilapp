@@ -41,10 +41,16 @@ const calculateAverageTime = (tables: Table[]): string => {
 
 const Tables = () => {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, logout, isAuthenticated } = useAuth();
   const tableContext = useTable();
   const { tables, setAllTablesAvailable, forceUpdateTables, setTables } = tableContext;
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate("/login");
+    }
+  }, [isAuthenticated, navigate]);
 
   const fetchTables = async () => {
     try {
@@ -144,12 +150,16 @@ const data = doc.data() as any;
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-full">
               <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <span className="text-sm font-medium text-gray-700">{user?.name}</span>
+              <span className="text-sm font-medium text-gray-700">{user?.name} ({Array.isArray(user?.role) ? user.role.join(", ") : user?.role})</span>
             </div>
             <Button
               variant="outline"
               size="sm"
-              onClick={() => logout()}
+              onClick={() => {
+                console.log("onClick - Botão Sair clicado");
+                logout();
+                navigate("/login");
+              }}
               className="flex items-center gap-2"
             >
               <LogOut className="h-4 w-4" />
@@ -217,7 +227,7 @@ const data = doc.data() as any;
                     t.id === table.id
                   ))
                 )
-                .sort((a, b) => parseInt(a.tableNumber) - parseInt(b.tableNumber))
+                .sort((a, b) => Number(a.tableNumber) - Number(b.tableNumber))
                 .map((table) => {
                   const status = getStatusConfig(table.status);
                   return (

@@ -17,7 +17,21 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
 const auth = getAuth(app); // Inicializar auth
-const db = getFirestore(app);
+
+const getFirestoreInstance = () => {
+  return getFirestore(app);
+};
+
+const db = getFirestoreInstance();
+
+const createUserCollection = (users: any[]) => {
+  const userCollection: any = {};
+  users.forEach(user => {
+    userCollection[user.email] = user;
+  });
+  return userCollection;
+};
+
 
 const addTable = async (tableData: {
   tableNumber: string | number;
@@ -48,11 +62,12 @@ const addTableWithId = async (tableId: string | number, tableData: {
   orders?: any[];
   totalAmount?: number;
 }) => {
+  console.log("addTableWithId - tableId:", tableId);
+  console.log("addTableWithId - tableData:", tableData);
   try {
     const tableRef = doc(db, "Mesas", String(tableId));
     await setDoc(tableRef, {
       ...tableData,
-      orders: []
     });
     console.log("Document written with ID: ", tableId);
   } catch (e) {
@@ -75,10 +90,6 @@ const addOrder = async (orderData: {
     // Adiciona o pedido em 'Pedidos'
     const pedidosRef = await addDoc(collection(db, "Pedidos"), orderData);
     console.log("Pedido adicionado em Pedidos com ID: ", pedidosRef.id);
-
-    // Adiciona também em 'statusdemesa'
-    const statusMesaRef = await addDoc(collection(db, "statusdemesa"), orderData);
-    console.log("Pedido adicionado em statusdemesa com ID: ", statusMesaRef.id);
 
   } catch (e) {
     console.error("Error adding document: ", e);
@@ -208,4 +219,4 @@ const createUniqueTables = async () => {
   }
 };
 
-export { auth, db, addTable, addOrder, addProduct, addTransaction, getTables, clearOrders, clearTables, updateTableStatus, onTablesChange, getDocs, collection, deleteDoc, doc, updateDoc, addDoc, createUniqueTables, addTableWithId, addTable as default }; // Export auth
+export { auth, db, addTable, addOrder, addProduct, addTransaction, getTables, clearOrders, clearTables, updateTableStatus, onTablesChange, getDocs, collection, deleteDoc, doc, updateDoc, addDoc, createUniqueTables, addTableWithId, getFirestoreInstance, createUserCollection, addTable as default }; // Export auth

@@ -1,30 +1,36 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+import app from "@/lib/firebase";
+import { useAuth } from "@/context/AuthContext";
 
 const Login = () => {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await login(email, password);
+      await login(email);
       toast({
         title: "Login successful",
-        description: "Welcome back!",
+        description: "Bem-vindo(a)!",
       });
+      toast({
+        title: "Login successful",
+        description: "Bem-vindo(a)!",
+      });
+      console.log("Login bem-sucedido");
       navigate("/tables");
     } catch (error) {
+      console.log("Login falhou");
       toast({
-        title: "Login failed",
-        description: "Please check your credentials and try again",
+        title: "Login falhou",
+        description: "Usuário não encontrado",
         variant: "destructive",
       });
     }
@@ -44,18 +50,6 @@ const Login = () => {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-          </div>
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium mb-1">
-              Password
-            </label>
-            <Input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
               required
             />
           </div>

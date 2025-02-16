@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { TableOrder, OrderItem } from '../types';
 import { useAuth, User } from './AuthContext';
-import { db, collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from "@/lib/firebase";
+import { db, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, getFirestoreInstance } from "@/lib/firebase";
+import { getFirestore, query, where, onSnapshot } from "firebase/firestore";
 
 export type TableStatus = 'available' | 'occupied' | 'reserved' | 'closing' | 'pending';
 
@@ -11,6 +12,9 @@ interface Table {
   status: TableStatus;
   orders: TableOrder[];
   totalAmount: number;
+  occupants?: number;
+  timeSeated?: string;
+  server?: string;
 }
 
 import { OrderStatus } from '../types';
@@ -77,6 +81,38 @@ export const TableProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         return table;
       });
     });
+
+    // Atualiza o status de todos os pedidos relacionados à mesa para "completed"
+    const dbInstance = getFirestore();
+    const tablesCollection = collection(dbInstance, "Pedidos");
+    const occupiedTablesQuery = query(tablesCollection, where("tableId", "==", tableId));
+    const querySnapshot = await getDocs(occupiedTablesQuery);
+    for (const document of querySnapshot.docs) {
+      try {
+        await updateDoc(doc(db, "Pedidos", document.id), { status: "completed" });
+      } catch (error) {
+        console.error("Error updating order status:", error);
+      }
+    }
+
+    // Remove all orders related to the table from Firebase
+    const occupiedTablesQuery2 = query(collection(db, "Pedidos"), where("tableId", "==", tableId));
+    const querySnapshot2 = await getDocs(occupiedTablesQuery2);
+    for (const document of querySnapshot2.docs) {
+      try {
+        await deleteDoc(doc(db, "Pedidos", document.id));
+      } catch (error) {
+        console.error("Error deleting order:", error);
+      }
+    }
+
+    // Update table status to "available" in Firebase
+    try {
+      await updateDoc(doc(db, "Mesas", tableId), { status: "available" });
+      console.log(`Table ${tableId} status updated to available`);
+    } catch (error) {
+      console.error("Error updating table status:", error);
+    }
   };
 
   const getTableOrders = (tableId: string) => {
@@ -105,28 +141,34 @@ export const TableProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // This function is not needed anymore
   };
 
-  useEffect(() => {
-    const fetchTables = async () => {
-      try {
-        const querySnapshot = await getDocs(collection(db, "Mesas"));
-        const tablesData: Table[] = querySnapshot.docs.map(doc => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            tableNumber: data.tableNumber || '',
-            status: data.status || 'available',
-            orders: data.orders || [],
-            totalAmount: data.totalAmount || 0,
-          } as Table;
-        });
-        setTables(tablesData);
-      } catch (error) {
-        console.error("Error fetching tables:", error);
-      }
-    };
+    useEffect(() => {
+      const fetchTables = () => {
+        try {
+          const unsubscribe = onSnapshot(collection(db, "Mesas"), (querySnapshot) => {
+            const tablesData: Table[] = querySnapshot.docs.map(doc => {
+              const data = doc.data();
+              return {
+                id: doc.id,
+                tableNumber: data.tableNumber || '',
+                status: data.status || 'available', // Get status from 'Mesas'
+                orders: data.orders || [],
+                totalAmount: data.totalAmount || 0,
+              } as Table;
+            });
 
-    fetchTables();
-  }, []);
+            setTables(tablesData);
+          });
+
+          return () => {
+            unsubscribe();
+          };
+        } catch (error) {
+          console.error("Error fetching tables:", error);
+        }
+      };
+
+      fetchTables();
+    }, []);
 
   return (
     <TableContext.Provider value={{

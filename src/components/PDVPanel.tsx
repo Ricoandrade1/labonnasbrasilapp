@@ -22,6 +22,7 @@ interface OpenTable {
   products: string[];
   responsibleName: string;
   timestamp: string;
+  mesaId: string;
 }
 
 interface MenuItem {
@@ -60,7 +61,7 @@ const PDVPanel = () => {
       const dbInstance = getFirestore();
       // Carregando mesas de 'Pedidos' do Firebase
       const tablesCollection = collection(dbInstance, "Pedidos");
-      const occupiedTablesQuery = query(tablesCollection);
+      const occupiedTablesQuery = query(tablesCollection, where("status", "!=", "available"));
       const unsubscribe = onSnapshot(occupiedTablesQuery, (tablesSnapshot) => {
         const firebaseTables = tablesSnapshot.docs
           .map((doc) => {
@@ -73,9 +74,10 @@ const PDVPanel = () => {
               products: data.products, // Assuming products is an array
               responsibleName: data.responsibleName,
               timestamp: data.timestamp,
+              mesaId: data.tableId, // Store the tableId from "Pedidos"
             } as OpenTable;
           })
-          .filter(table => /^\d+$/.test(table.tableNumber)) // Filter out invalid table IDs
+          .filter((table) => /^\d+$/.test(table.tableNumber)) // Filter out invalid table IDs
 
         // Group tables by tableNumber
         const tablesMap = new Map<string, OpenTable[]>();
@@ -116,7 +118,7 @@ const PDVPanel = () => {
     loadTablesFromFirebase();
   }, []);
 
-  const handleTableSelect = (table: OpenTable) => {
+ const handleTableSelect = (table: OpenTable) => {
     setSelectedTable(table);
     console.log("handleTableSelect - table:", table);
     setOrderHistoryFromFirebase(table.tableNumber);
@@ -184,12 +186,10 @@ const PDVPanel = () => {
     setIsPaymentDialogOpen(true);
   };
 
-  const handlePaymentConfirm = () => {
+ const handlePaymentConfirm = () => {
     if (!selectedTable) return;
 
-    // Simulate order completion
-    // (Payment confirmation logic remains the same)
-    alert(`Pagamento confirmado por ${paymentMethod} para a Mesa ${selectedTable?.tableNumber} - Total: €${orderTotal.toFixed(2)}`);
+    // Chamar a função onConfirm do PaymentDialog
     setIsPaymentDialogOpen(false);
     setPaymentMethod(null);
     setSelectedTable(null);
@@ -274,6 +274,8 @@ const PDVPanel = () => {
           onOpenChange={setIsPaymentDialogOpen}
           paymentMethod={paymentMethod}
           total={orderTotal}
+          tableId={selectedTable?.id} // Passa o tableId como prop
+          mesaId={selectedTable?.mesaId}
           onConfirm={handlePaymentConfirm}
         />
       </CardContent>

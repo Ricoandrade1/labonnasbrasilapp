@@ -10,23 +10,32 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button";
+import { useTable } from "@/context/TableContext";
+import { db, collection, addDoc } from "@/lib/firebase";
+import { useAuth } from "@/context/AuthContext"; // Importe o contexto de autenticação
+
 
 interface PaymentDialogProps {
   paymentMethod: string | null;
   total: number;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  tableId: string; // Adicione a prop tableId
+  mesaId: string;
   onConfirm: () => void;
 }
 
-const PaymentDialog: React.FC<PaymentDialogProps> = ({ paymentMethod, total, open, onOpenChange, onConfirm }) => {
+const PaymentDialog: React.FC<PaymentDialogProps> = ({ paymentMethod, total, open, onOpenChange, tableId, mesaId, onConfirm }) => {
+  const { clearTable } = useTable();
+  const { user } = useAuth(); // Obtenha o usuário autenticado
+
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent className="bg-white text-black">
         <AlertDialogHeader>
           <AlertDialogTitle className="text-lg font-semibold">Finalizar Pagamento</AlertDialogTitle>
           <AlertDialogDescription className="text-sm text-gray-500">
-            Confirma o pagamento de **R$ {total.toFixed(2)}** por **{paymentMethod}**?
+            Confirma o pagamento de **€ {total.toFixed(2)}** por **{paymentMethod}**?
           </AlertDialogDescription>
         </AlertDialogHeader>
         <div className="flex justify-center space-x-4 mb-4">
@@ -65,7 +74,32 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({ paymentMethod, total, ope
             </Button>
           </AlertDialogCancel>
           <AlertDialogAction asChild>
-            <Button type="submit" className="bg-green-500 text-white hover:bg-green-600">Confirmar Pagamento</Button>
+            <Button type="submit" className="bg-green-500 text-white hover:bg-green-600" onClick={async () => {
+              try {
+                if (!user) {
+                  console.error("Usuário não autenticado.");
+                  // TODO: Exibir mensagem de erro para o usuário
+                  return;
+                }
+
+                // 1. Limpar a mesa
+                await clearTable(mesaId);
+
+                // 2. Salvar o fechamento da mesa no Firebase
+                await addDoc(collection(db, "Caixa"), {
+                  tableId: tableId,
+                  paymentMethod: paymentMethod,
+                  total: total,
+                  timestamp: new Date().toISOString(),
+                });
+
+                // 3. Chamar a função onConfirm para fechar o diálogo
+                onConfirm();
+              } catch (error) {
+                console.error("Erro ao finalizar o pagamento:", error);
+                // TODO: Exibir uma mensagem de erro para o usuário
+              }
+            }}>Confirmar Pagamento</Button>
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

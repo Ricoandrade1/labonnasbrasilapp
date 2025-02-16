@@ -9,8 +9,14 @@ import { useEffect } from "react";
 
 const TableCaixa = () => {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, logout, isAuthenticated } = useAuth();
   const { tables, updateOrderStatus } = useTable();
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate("/login");
+    }
+  }, [isAuthenticated, navigate]);
 
   useEffect(() => {
     console.log("TableCaixa - tables", tables);
@@ -67,10 +73,15 @@ const TableCaixa = () => {
               <div className="w-2 h-2 bg-green-500 rounded-full"></div>
               <span className="text-sm font-medium text-gray-700">{user?.name}</span>
             </div>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               size="sm"
-              onClick={() => logout()}
+              onClick={() => {
+                console.log("onClick - Botão Sair clicado");
+                console.log("Botão Sair clicado");
+                logout();
+                navigate("/login");
+              }}
               className="flex items-center gap-2"
             >
               <LogOut className="h-4 w-4" />
@@ -126,7 +137,7 @@ const TableCaixa = () => {
               return (
                 <button
                   key={table.id}
-                  onClick={() => handleTableClick(table.id)}
+                  onClick={() => handleTableClick(Number(table.id))}
                   className={`relative group p-4 rounded-lg border transition-all duration-200 ${status.color} ${status.borderColor} hover:shadow-md`}
                 >
                   <div className="flex flex-col items-center gap-2">
