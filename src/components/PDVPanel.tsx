@@ -166,12 +166,15 @@ const PDVPanel = () => {
           });
         }
         if (data?.total) {
+          console.log("Document total:", data.total);
           calculatedTotal += data.total;
         }
       });
 
       console.log("calculatedTotal:", calculatedTotal);
       console.log("orderItems array:", orderItems);
+      console.log("setOrderHistoryFromFirebase - orderItems:", orderItems);
+      console.log("setOrderHistoryFromFirebase - calculatedTotal:", calculatedTotal);
       setOrderHistory(orderItems);
       console.log("setOrderHistoryFromFirebase - orderHistory:", orderItems);
       localStorage.setItem('orderTotal', calculatedTotal.toString());

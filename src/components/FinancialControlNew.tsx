@@ -28,30 +28,50 @@ const FinancialControlNew = () => {
   const [saldoFinal, setSaldoFinal] = useState(0);
 
   useEffect(() => {
-    const fetchTransactions = () => {
+    const fetchTransactions = async () => {
       if (!db) {
         console.error("Firebase não inicializado!");
         return;
       }
 
       try {
+        const controleFinanceiroCollection = collection(db, 'ControleFinanceiro');
         const transactionsCollection = collection(db, 'transactions');
-        // TODO: Add date filters to the query
-        const unsubscribe = onSnapshot(transactionsCollection, (snapshot) => {
-          const transactionList = snapshot.docs.map(doc => {
+
+        const unsubscribeControleFinanceiro = onSnapshot(controleFinanceiroCollection, (snapshot) => {
+          const controleFinanceiroList = snapshot.docs.map(doc => {
             const data = doc.data();
+            console.log("FinancialControlNew - ControleFinanceiro doc data:", data);
             return {
               id: doc.id,
-              type: data.type || 'entrada',
-              amount: data.amount || 0,
-              description: data.description || '',
-              date: data.date ? new Date(data.date).toISOString() : new Date().toISOString(),
+              type: data.tipo || 'entrada',
+              amount: data.valor || 0,
+              description: data.descricao || '',
+              date: data.data ? new Date(data.data).toISOString() : new Date().toISOString(),
             } as Transaction;
           });
-          setTransactions(transactionList);
-        });
 
-        return () => unsubscribe();
+          const unsubscribeTransactions = onSnapshot(transactionsCollection, (snapshot) => {
+            const transactionList = snapshot.docs.map(doc => {
+              const data = doc.data();
+              console.log("FinancialControlNew - transactions doc data:", data);
+              return {
+                id: doc.id,
+                type: data.type || 'entrada',
+                amount: data.amount || 0,
+                description: data.description || '',
+                date: data.date ? new Date(data.date).toISOString() : new Date().toISOString(),
+              } as Transaction;
+            });
+
+            setTransactions([...controleFinanceiroList, ...transactionList]);
+          });
+
+          return () => {
+            unsubscribeControleFinanceiro();
+            unsubscribeTransactions();
+          };
+        });
       } catch (error) {
         console.error("Erro ao buscar transações:", error);
       }
@@ -78,8 +98,13 @@ const FinancialControlNew = () => {
       setTotalSaida(saida);
       setTotalCompra(compra);
       setSaldoFinal(entrada - saida - compra);
+
+      console.log("FinancialControlNew - entrada:", entrada);
+      console.log("FinancialControlNew - saida:", saida);
+      console.log("FinancialControlNew - compra:", compra);
     };
 
+    console.log("FinancialControlNew - transactions:", transactions);
     calculateTotals();
   }, [transactions]);
 
@@ -99,7 +124,12 @@ const FinancialControlNew = () => {
 
     try {
       const transactionsCollection = collection(db, 'transactions');
-      await addDoc(transactionsCollection, newTransaction);
+      await addDoc(transactionsCollection, {
+        amount: amount,
+        date: new Date().toISOString(),
+        description: description,
+        type: type,
+      });
       setAmount(0);
       setDescription('');
     } catch (error) {

@@ -86,12 +86,31 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({ paymentMethod, total, ope
                 await clearTable(mesaId);
 
                 // 2. Salvar o fechamento da mesa no Firebase
+                console.log("Salvando fechamento da mesa no Firebase (Caixa)...");
                 await addDoc(collection(db, "Caixa"), {
                   tableId: tableId,
                   paymentMethod: paymentMethod,
                   total: total,
                   timestamp: new Date().toISOString(),
                 });
+                console.log("Fechamento da mesa salvo com sucesso no Firebase (Caixa).");
+
+                // 2.1. Salvar a entrada no controle financeiro
+                console.log("Salvando entrada no controle financeiro (ControleFinanceiro)...");
+                console.log("Valor total:", total);
+                try {
+                  await addDoc(collection(db, "ControleFinanceiro"), {
+                    categoria: "mesa",
+                    data: new Date().toISOString(),
+                    descricao: `Mesa ${tableId}`,
+                    tipo: "entrada",
+                    usuario: user.name,
+                    valor: total,
+                  });
+                  console.log("Entrada salva com sucesso no controle financeiro (ControleFinanceiro).");
+                } catch (error) {
+                  console.error("Erro ao salvar entrada no controle financeiro:", error);
+                }
 
                 // 3. Chamar a função onConfirm para fechar o diálogo
                 onConfirm();
