@@ -273,11 +273,11 @@ const data = doc.data() as any;
           </div>
         </div>
       </div>
-      <div className="flex justify-center space-x-4">
+      {/* <div className="flex justify-center space-x-4">
         <Button onClick={() => setAllTablesAvailable()}>Set All Tables Available</Button>
         <Button onClick={() => { localStorage.clear(); window.location.reload(); }}>Limpar Dados Locais</Button>
         <Button onClick={() => forceUpdateTables()}>Atualizar Mesas</Button>
-      </div>
+      </div> */}
     </div>
   );
 };
