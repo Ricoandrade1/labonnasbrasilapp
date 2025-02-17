@@ -69,7 +69,7 @@ function App() {
             }
           />
           <Route
-            path="/caixa"
+            path="/cashier"
             element={
               <PrivateRoute>
                 <TableProvider><Cashier /></TableProvider>
