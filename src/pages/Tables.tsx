@@ -186,9 +186,9 @@ const data = doc.data() as any;
             </div>
             <div>
 <p className="text-sm text-gray-500">Mesas Ocupadas</p>
-    <p className="text-2xl font-bold text-gray-900">
-      {activeOrders.length} / {tables.length}
-    </p>
+<p className="text-2xl font-bold text-gray-900">
+  {tables.filter(table => table.status === "occupied").length} / {tables.length}
+</p>
             </div>
           </Card>
 
