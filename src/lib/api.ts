@@ -24,6 +24,8 @@ import { User } from "@/context/AuthContext";
 import { TableStatus } from "@/context/TableContext";
 import { query, where, orderBy } from "firebase/firestore";
 
+export { query, where };
+
 const addOrderToFirebase = async (tableId: string, order: TableOrder, user: User | null, paymentMethod: string) => {
   try {
     const docRef = await addDoc(collection(db, "Pedidos"), {

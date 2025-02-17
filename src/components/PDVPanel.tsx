@@ -13,6 +13,7 @@ import PaymentDialog from "./PaymentDialog";
 import { collection, getDocs, getFirestore, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { menuItems } from "@/data/menuItems";
+import FinancialControl from './FinancialControl';
 
 interface OpenTable {
   id: string;
@@ -278,6 +279,7 @@ const PDVPanel = () => {
           mesaId={selectedTable?.mesaId}
           onConfirm={handlePaymentConfirm}
         />
+        <FinancialControl />
       </CardContent>
     </Card>
   );

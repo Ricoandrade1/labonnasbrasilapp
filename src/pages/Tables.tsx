@@ -6,7 +6,7 @@ import { LogOut, Users, Clock, Coffee } from "lucide-react";
 import { useTable } from "@/context/TableContext";
 import { useEffect, useState } from "react";
 import { TableStatus } from "@/context/TableContext";
-import { db, collection, getDocs, getFirebaseOrderHistory } from "@/lib/api";
+import { db, collection, getDocs, getFirebaseOrderHistory, query, where } from "@/lib/api";
 
 interface Table {
   id: string | number;
@@ -15,7 +15,6 @@ interface Table {
   orders: any[];
   totalAmount: number;
   openingTime?: string;
-  orderHistory?: any[];
 }
 
 const calculateAverageTime = (tables: Table[]): string => {
@@ -45,6 +44,7 @@ const Tables = () => {
   const tableContext = useTable();
   const { tables, setAllTablesAvailable, forceUpdateTables, setTables } = tableContext;
   const [loading, setLoading] = useState(true);
+  const [activeOrders, setActiveOrders] = useState<any[]>([]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -55,16 +55,24 @@ const Tables = () => {
   const fetchTables = async () => {
     try {
       const querySnapshot = await getDocs(collection(db, "Mesas"));
+      const activeOrdersQuery = query(collection(db, "Pedidos"), where("status", "!=", "completed"));
+      const activeOrdersSnapshot = await getDocs(activeOrdersQuery);
+      const activeOrdersData = activeOrdersSnapshot.docs.map(doc => doc.data());
+      setActiveOrders(activeOrdersData);
+
       const tablesData = await Promise.all(querySnapshot.docs.map(async doc => {
 const data = doc.data() as any;
           const tableData: Table = {
             id: doc.id,
             tableNumber: data.tableNumber || '',
-            status: (data.status || 'available') as TableStatus,
+            status: data.status || 'available' as TableStatus,
             totalAmount: data.totalAmount || 0,
             openingTime: data.openingTime || null,
-            orders: data.orderHistory || [],
+            orders: [],
           };
+          const orderHistory = await getFirebaseOrderHistory(doc.id);
+          tableData.orders = orderHistory;
+          
           return tableData;
         }));
 
@@ -80,7 +88,7 @@ const data = doc.data() as any;
 
         console.log("Tables.tsx - Fetched tables:", tablesData);
         console.log("Tables.tsx - Fetched tables length:", tablesData.length);
-        setTables(tablesData);
+        setTables((prevTables) => tablesData);
       } catch (error) {
         console.error("Tables.tsx - Error fetching tables:", error);
       } finally {
@@ -88,7 +96,7 @@ const data = doc.data() as any;
       }
     };
 
-  useEffect(() => {
+ useEffect(() => {
     console.log("Tables.tsx - useEffect triggered");
     fetchTables();
   }, [setTables]);
@@ -177,10 +185,10 @@ const data = doc.data() as any;
               <Users className="h-6 w-6 text-emerald-600" />
             </div>
             <div>
-              <p className="text-sm text-gray-500">Mesas Ocupadas</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {tables && tables.filter(t => t.status === "occupied").length} / {tables.length}
-              </p>
+<p className="text-sm text-gray-500">Mesas Ocupadas</p>
+    <p className="text-2xl font-bold text-gray-900">
+      {activeOrders.length} / {tables.length}
+    </p>
             </div>
           </Card>
 
