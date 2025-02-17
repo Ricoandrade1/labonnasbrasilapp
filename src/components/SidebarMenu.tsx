@@ -15,7 +15,7 @@ const SidebarMenu = () => {
   
   const menuItems = [
     { name: "Mesa", path: "/tables", icon: LayoutGrid },
-    { name: "Caixa", path: "/caixa", icon: DollarSign },
+    { name: "Caixa", path: "/cashier", icon: DollarSign },
     { name: "Gerente", path: "/gerente", icon: Users },
     { name: "Adm", path: "/adm", icon: Settings },
   ];
