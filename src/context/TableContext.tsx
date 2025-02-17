@@ -100,9 +100,10 @@ export const TableProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const querySnapshot2 = await getDocs(occupiedTablesQuery2);
     for (const document of querySnapshot2.docs) {
       try {
-        await deleteDoc(doc(db, "Pedidos", document.id));
+        const orderRef = doc(db, "Pedidos", document.id);
+        await deleteDoc(orderRef);
       } catch (error) {
-        console.error("Error deleting order:", error);
+        console.error(`Error deleting order ${document.id}:`, error);
       }
     }
 

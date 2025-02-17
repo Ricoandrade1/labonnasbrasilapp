@@ -13,7 +13,8 @@ import PaymentDialog from "./PaymentDialog";
 import { collection, getDocs, getFirestore, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { menuItems } from "@/data/menuItems";
-import FinancialControl from './FinancialControl';
+import FinancialControlNew from './FinancialControlNew';
+import OrderTotal from './OrderTotal';
 
 interface OpenTable {
   id: string;
@@ -48,10 +49,13 @@ const PDVPanel = () => {
   const [openTables, setOpenTables] = React.useState<OpenTable[]>([]);
   const [selectedTable, setSelectedTable] = React.useState<OpenTable | null>(null);
   const [orderHistory, setOrderHistory] = React.useState<OrderItem[]>([]);
-  const [orderTotal, setOrderTotal] = React.useState<number>(0);
   const [paymentMethod, setPaymentMethod] = React.useState<string | null>(null);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = React.useState<boolean>(false);
   const [unsubscribeOrderHistory, setUnsubscribeOrderHistory] = React.useState<() => void | undefined>();
+  const [orderTotal, setOrderTotal] = React.useState<number>(() => {
+    const storedTotal = localStorage.getItem('orderTotal');
+    return storedTotal ? parseFloat(storedTotal) : 0;
+  });
 
   const calculateTotal = (items: OrderItem[]): number => {
     return items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
@@ -60,25 +64,24 @@ const PDVPanel = () => {
   const loadTablesFromFirebase = async () => {
     try {
       const dbInstance = getFirestore();
-      // Carregando mesas de 'Pedidos' do Firebase
-      const tablesCollection = collection(dbInstance, "Pedidos");
-      const occupiedTablesQuery = query(tablesCollection, where("status", "!=", "available"));
-      const unsubscribe = onSnapshot(occupiedTablesQuery, (tablesSnapshot) => {
+      // Carregando mesas de 'Mesas' do Firebase
+      const tablesCollection = collection(dbInstance, "Mesas");
+      const unsubscribe = onSnapshot(tablesCollection, (tablesSnapshot) => {
         const firebaseTables = tablesSnapshot.docs
           .map((doc) => {
             const data = doc.data();
             return {
               id: doc.id,
-              tableNumber: data.tableId, // Use tableId from firebase data
+              tableNumber: data.tableNumber, // Use tableNumber from firebase data
               status: data.status,
-              total: data.total,
-              products: data.products, // Assuming products is an array
-              responsibleName: data.responsibleName,
-              timestamp: data.timestamp,
-              mesaId: data.tableId, // Store the tableId from "Pedidos"
+              total: data.total || 0,
+              products: [], // Assuming products is an array
+              responsibleName: '',
+              timestamp: '',
+              mesaId: doc.id, // Store the document id from "Mesas"
             } as OpenTable;
           })
-          .filter((table) => /^\d+$/.test(table.tableNumber)) // Filter out invalid table IDs
+          .filter((table) => table.status !== 'available' && /^\d+$/.test(table.tableNumber)) // Filter out invalid table IDs
 
         // Group tables by tableNumber
         const tablesMap = new Map<string, OpenTable[]>();
@@ -122,15 +125,15 @@ const PDVPanel = () => {
  const handleTableSelect = (table: OpenTable) => {
     setSelectedTable(table);
     console.log("handleTableSelect - table:", table);
-    setOrderHistoryFromFirebase(table.tableNumber);
+    setOrderHistoryFromFirebase(table.mesaId);
   };
 
-  const setOrderHistoryFromFirebase = (tableNumber: string) => {
+  const setOrderHistoryFromFirebase = (mesaId: string) => {
     if (unsubscribeOrderHistory) {
       unsubscribeOrderHistory(); // Unsubscribe from previous listener
     }
 
-    if (!tableNumber) {
+    if (!mesaId) {
       setOrderHistory([]);
       setOrderTotal(0);
       return;
@@ -138,27 +141,31 @@ const PDVPanel = () => {
 
     const dbInstance = getFirestore();
     const tablesCollection = collection(dbInstance, "Pedidos");
-    const occupiedTablesQuery = query(tablesCollection, where("tableId", "==", tableNumber));
+    const occupiedTablesQuery = query(tablesCollection, where("tableId", "==", mesaId));
+
+    console.log("Query parameters:", mesaId);
 
     const unsubscribe = onSnapshot(occupiedTablesQuery, (querySnapshot) => {
-      console.log("onSnapshot callback triggered for table:", tableNumber);
-      console.log("querySnapshot data:", querySnapshot);
+      console.log("onSnapshot callback triggered for table:", mesaId);
+      console.log("querySnapshot data:", querySnapshot.docs.map(doc => doc.data()));
 
       let orderItems: OrderItem[] = [];
       let calculatedTotal = 0;
 
-      querySnapshot.forEach((doc) => {
+      querySnapshot.docs.forEach((doc) => {
         const data = doc.data();
         console.log("Document data:", data);
-        const items = data.items as any[];
+        const items = data?.items as any[];
         if (items && Array.isArray(items)) {
-          orderItems = orderItems.concat(items.map(item => ({
-            name: item.name,
-            price: item.price,
-            quantity: item.quantity,
-          })));
+          items.forEach(item => {
+            orderItems.push({
+              name: item.name,
+              price: item.price,
+              quantity: item.quantity,
+            });
+          });
         }
-        if (data !== null && data.total !== undefined) {
+        if (data?.total) {
           calculatedTotal += data.total;
         }
       });
@@ -167,6 +174,7 @@ const PDVPanel = () => {
       console.log("orderItems array:", orderItems);
       setOrderHistory(orderItems);
       console.log("setOrderHistoryFromFirebase - orderHistory:", orderItems);
+      localStorage.setItem('orderTotal', calculatedTotal.toString());
       setOrderTotal(calculatedTotal);
     }, (error) => {
       console.error("Erro ao ouvir atualizações do Firebase:", error);
@@ -253,11 +261,9 @@ const PDVPanel = () => {
           </div>
 
           {/* Total Display */}
-          <div className="p-4 border rounded-md">
-            <h3>Total do Pedido: € {Number(orderTotal).toFixed(2)}</h3>
-          </div>
           {selectedTable && (
           <div className="mt-4">
+            <OrderTotal total={Number(orderTotal)} />
              <Button variant="default" className="w-full" onClick={() => handlePaymentMethodSelect('Dinheiro')}>
                 Dinheiro
               </Button>
@@ -279,7 +285,7 @@ const PDVPanel = () => {
           mesaId={selectedTable?.mesaId}
           onConfirm={handlePaymentConfirm}
         />
-        <FinancialControl />
+        <FinancialControlNew />
       </CardContent>
     </Card>
   );
