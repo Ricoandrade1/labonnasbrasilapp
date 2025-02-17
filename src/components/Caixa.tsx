@@ -137,7 +137,9 @@ const Caixa = () => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Controle de Caixa</CardTitle>
+        <CardTitle>
+          Controle de Caixa - Função: {user.role}
+        </CardTitle>
       </CardHeader>
       <CardContent className="grid gap-4">
         {caixaAberto ? (

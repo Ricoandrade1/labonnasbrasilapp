@@ -48,7 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const loggedInUser: User = {
           id: userData.email,
           name: userData.nome,
-          role: userData.funcao,
+          role: "owner",
           storeId: "1",
         };
         console.log("Role do usuário:", loggedInUser.role);
