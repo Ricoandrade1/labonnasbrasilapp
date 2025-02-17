@@ -22,6 +22,8 @@ import PDVPanel from "@/components/PDVPanel";
 import { addTable } from "@/lib/firebase";
 
 import { getTables } from "@/lib/firebase";
+import { db } from "../lib/firebase";
+import { collection, getDocs } from "firebase/firestore";
 
 interface OpenTable {
   id: string;
@@ -30,9 +32,17 @@ interface OpenTable {
   status: "available" | "occupied";
 }
 
+interface Transaction {
+  metodo: string;
+  valentia: number;
+  descricao: string;
+}
+
 const Cashier = () => {
   const navigate = useNavigate();
   const [openTables, setOpenTables] = React.useState<OpenTable[]>([]);
+  const [transactions, setTransactions] = React.useState<Transaction[]>([]);
+  const [filter, setFilter] = React.useState<string>('Todos');
 
   React.useEffect(() => {
     const fetchTables = async () => {
@@ -40,8 +50,43 @@ const Cashier = () => {
       setOpenTables(tables);
     };
 
+    const fetchTransactions = async () => {
+      const transactionsData: Transaction[] = [];
+
+      // Fetch from 'transactions' collection
+      const transactionsCollection = collection(db, 'transactions');
+      const transactionsSnapshot = await getDocs(transactionsCollection);
+      transactionsSnapshot.forEach(doc => {
+        const data = doc.data();
+        transactionsData.push({
+          metodo: data.type || 'N/A',
+          valentia: data.amount || 0,
+          descricao: data.description || data.tipo || 'N/A',
+        });
+      });
+
+      // Fetch from 'ControleFinanceiro' collection
+      const controleFinanceiroCollection = collection(db, 'ControleFinanceiro');
+      const controleFinanceiroSnapshot = await getDocs(controleFinanceiroCollection);
+      controleFinanceiroSnapshot.forEach(doc => {
+        const data = doc.data();
+        transactionsData.push({
+          metodo: data.tipo || 'N/A',
+          valentia: data.valor || 0,
+          descricao: data.descricao || data.tipo || 'N/A',
+        });
+      });
+
+      setTransactions(transactionsData);
+    };
+
     fetchTables();
+    fetchTransactions();
   }, []);
+
+  const filteredTransactions = filter === 'Todos'
+    ? transactions
+    : transactions.filter(transaction => transaction.metodo === filter);
 
   return (
     <div className="container mx-auto py-6 space-y-6">
@@ -102,49 +147,42 @@ const Cashier = () => {
             <CardDescription>Histórico recente de pagamentos</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex justify-end mb-4">
-              <Select>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Filtrar por método" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  <SelectItem value="cash">Dinheiro</SelectItem>
-                  <SelectItem value="credit">Cartão de Crédito</SelectItem>
-                  <SelectItem value="debit">Cartão de Débito</SelectItem>
-                  <SelectItem value="pix">PIX</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="flex mb-4 space-x-2 flex-wrap">
+              <Button variant={filter === 'Todos' ? 'default' : 'outline'} size="sm" onClick={() => setFilter('Todos')}>
+                Todos
+              </Button>
+              <Button variant={filter === 'Mbway' ? 'default' : 'outline'} size="sm" onClick={() => setFilter('Mbway')}>
+                Mbway
+              </Button>
+              <Button variant={filter === 'Multibanco' ? 'default' : 'outline'} size="sm" onClick={() => setFilter('Multibanco')}>
+                Multibanco
+              </Button>
+              <Button variant={filter === 'saida' ? 'default' : 'outline'} size="sm" onClick={() => setFilter('saida')}>
+                saida
+              </Button>
+              <Button variant={filter === 'entrada' ? 'default' : 'outline'} size="sm" onClick={() => setFilter('entrada')}>
+                entrada
+              </Button>
+              <Button variant={filter === 'compra' ? 'default' : 'outline'} size="sm" onClick={() => setFilter('compra')}>
+                compra
+              </Button>
             </div>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Mesa</TableHead>
                   <TableHead>Método</TableHead>
-                  <TableHead>Valor</TableHead>
+                  <TableHead>Descrição</TableHead>
+                  <TableHead>Valentia</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                <TableRow>
-                  <TableCell>Mesa 1</TableCell>
-                  <TableCell>Dinheiro</TableCell>
-                  <TableCell>R$ 100,00</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell>Mesa 2</TableCell>
-                  <TableCell>Crédito</TableCell>
-                  <TableCell>R$ 200,00</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell>Mesa 3</TableCell>
-                  <TableCell>Débito</TableCell>
-                  <TableCell>R$ 150,00</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell>Mesa 4</TableCell>
-                  <TableCell>PIX</TableCell>
-                  <TableCell>R$ 50,00</TableCell>
-                </TableRow>
+                {filteredTransactions.map((transaction, index) => (
+                  <TableRow key={index}>
+                    <TableCell>{transaction.metodo}</TableCell>
+                    <TableCell className="break-words">{transaction.descricao.length > 30 ? transaction.descricao.substring(0, 30) + "..." : transaction.descricao}</TableCell>
+                    <TableCell>€ {transaction.valentia.toFixed(2)}</TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
           </CardContent>

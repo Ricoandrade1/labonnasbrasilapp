@@ -172,9 +172,9 @@ const FinancialControlNew = () => {
           </div>
           <div className="flex flex-col space-y-1.5">
             <Label htmlFor="description">Descrição</Label>
-            <Input type="text" id="description" value={description} onChange={(e) => setDescription(e.target.value)} className="w-full" />
+            <Input type="text" id="description" value={description} onChange={(e) => setDescription(e.target.value)} className="w-full" required />
           </div>
-          <Button onClick={handleAddTransaction} className="w-full">Adicionar Transação</Button>
+          <Button onClick={handleAddTransaction} className="w-full" disabled={!description}>Adicionar Transação</Button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
