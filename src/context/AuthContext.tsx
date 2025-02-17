@@ -52,10 +52,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           storeId: "1",
         };
         console.log("Role do usuário:", loggedInUser.role);
-        const isCaixaAberto = await verificarCaixaAberto(loggedInUser.id);
-        if (!isCaixaAberto) {
-          throw new Error("Caixa precisa ser aberto");
-        }
+        // const isCaixaAberto = await verificarCaixaAberto(loggedInUser.id);
+        // if (!isCaixaAberto) {
+        //   throw new Error("Caixa precisa ser aberto");
+        // }
         setUser(loggedInUser);
         setCaixaAberto(true);
         localStorage.clear();
@@ -69,7 +69,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.error("Usuário não encontrado");
       } else if (error.message === "Caixa precisa ser aberto") {
         console.error("Caixa precisa ser aberto");
-        throw new Error("Caixa precisa ser aberto");
+        // throw new Error("Caixa precisa ser aberto");
       } else {
         console.error("Erro ao fazer login", error);
       }
