@@ -21,10 +21,12 @@ import { useNavigate } from "react-router-dom";
 import PDVPanel from "@/components/PDVPanel";
 import { addTable } from "@/lib/firebase";
 import Caixa from "@/components/Caixa";
+import { useTable } from "@/context/TableContext";
 
 import { getTables } from "@/lib/firebase";
 import { db } from "../lib/firebase";
 import { collection, getDocs } from "firebase/firestore";
+
 
 interface OpenTable {
   id: string;
@@ -93,7 +95,7 @@ const Cashier = () => {
     <div className="container mx-auto py-6 space-y-6">
       <PDVPanel />
       <Caixa />
-      <div className="flex justify-between items-center mb-4">
+            <div className="flex justify-between items-center mb-4">
       </div>
       <Button onClick={async () => {
         const newTable = {

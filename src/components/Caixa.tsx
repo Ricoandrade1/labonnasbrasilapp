@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useTable } from '../context/TableContext';
 import { db } from '../lib/firebase';
 import { collection, addDoc, getDocs, query, where, doc, updateDoc } from 'firebase/firestore';
 import { Button } from "@/components/ui/button";
@@ -22,8 +23,8 @@ interface CaixaData {
 
 const Caixa = () => {
   const { user } = useAuth();
+  const { initialCashValue } = useTable();
   const [caixaAberto, setCaixaAberto] = useState<CaixaData | null>(null);
-  const [valorInicial, setValorInicial] = useState<number>(0);
   const [valorFinal, setValorFinal] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -64,8 +65,13 @@ const Caixa = () => {
         return;
       }
 
-      if (!valorInicial) {
+      if (initialCashValue === null) {
         setError('Valor inicial é obrigatório.');
+        return;
+      }
+
+      if (user.role !== 'caixa' && user.role !== 'manager' && user.role !== 'adm') {
+        setError('Apenas usuários com a função de caixa, gerente ou adm podem fechar o caixa.');
         return;
       }
 
@@ -74,15 +80,14 @@ const Caixa = () => {
         dataAbertura: new Date().toLocaleDateString(),
         horaAbertura: new Date().toLocaleTimeString(),
         usuarioAbertura: user.id,
-        valorInicial: valorInicial,
+        valorInicial: initialCashValue,
         status: 'aberto',
       });
-      setValorInicial(0);
       setCaixaAberto({
         dataAbertura: new Date().toLocaleDateString(),
         horaAbertura: new Date().toLocaleTimeString(),
         usuarioAbertura: user.id,
-        valorInicial: valorInicial,
+        valorInicial: initialCashValue,
         status: 'aberto',
       });
     } catch (e: any) {
@@ -101,6 +106,11 @@ const Caixa = () => {
 
       if (!valorFinal) {
         setError('Valor final é obrigatório.');
+        return;
+      }
+
+      if (user.role !== 'caixa' && user.role !== 'manager' && user.role !== 'adm') {
+        setError('Apenas usuários com a função de caixa, gerente ou adm podem fechar o caixa.');
         return;
       }
 
@@ -132,7 +142,7 @@ const Caixa = () => {
     return <div>Usuário não autenticado.</div>;
   }
 
-  const podeAbrirCaixa = user && (user.role === 'caixa' || user.role === 'manager' || user.role === 'owner');
+  const podeAbrirCaixa = user && (user.role === 'caixa' || user.role === 'manager' || user.role === 'adm');
 
   return (
     <Card>
@@ -147,7 +157,6 @@ const Caixa = () => {
             <h2>Caixa Aberto</h2>
             <p>Data de Abertura: {caixaAberto.dataAbertura}</p>
             <p>Hora de Abertura: {caixaAberto.horaAbertura}</p>
-            <p>Valor Inicial: {caixaAberto.valorInicial}</p>
             <div className="flex flex-col space-y-1.5">
               <Label htmlFor="valorFinal">Valor Final</Label>
               <Input
@@ -158,28 +167,12 @@ const Caixa = () => {
                 onChange={(e) => setValorFinal(Number(e.target.value))}
               />
             </div>
-            <Button onClick={handleFecharCaixa}>Fechar Caixa</Button>
+            {podeAbrirCaixa && <Button onClick={handleFecharCaixa}>Fechar Caixa</Button>}
           </div>
         ) : (
           <div>
             <h2>Caixa Fechado</h2>
-            {podeAbrirCaixa ? (
-              <>
-                <div className="flex flex-col space-y-1.5">
-                  <Label htmlFor="valorInicial">Valor Inicial</Label>
-                  <Input
-                    type="number"
-                    id="valorInicial"
-                    placeholder="Digite o valor inicial do caixa"
-                    value={valorInicial}
-                    onChange={(e) => setValorInicial(Number(e.target.value))}
-                  />
-                </div>
-                <Button onClick={handleAbrirCaixa}>Abrir Caixa</Button>
-              </>
-            ) : (
-              <p>Você não tem permissão para abrir o caixa.</p>
-            )}
+            {podeAbrirCaixa && <Button onClick={handleAbrirCaixa}>Abrir Caixa</Button>}
           </div>
         )}
       </CardContent>

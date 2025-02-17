@@ -27,15 +27,18 @@ interface TableContextType {
   setAllTablesAvailable: () => void;
   forceUpdateTables: () => void;
   setTables: React.Dispatch<React.SetStateAction<Table[]>>;
+  initialCashValue: number | null;
+  setInitialCashValue: (value: number | null) => void;
 }
 
 const TableContext = createContext<TableContextType | undefined>(undefined);
 
 export const TableProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [tables, setTables] = useState<Table[]>([]);
+  const [initialCashValue, setInitialCashValue] = useState<number | null>(null);
   const auth = useAuth();
 
-  const calculateTotalAmount = (orders: TableOrder[]) => {
+    const calculateTotalAmount = (orders: TableOrder[]) => {
     return orders.reduce((total, order) => total + order.total, 0);
   };
 
@@ -179,7 +182,9 @@ export const TableProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       getTableOrders,
       setAllTablesAvailable,
       forceUpdateTables,
-      setTables
+      setTables,
+      initialCashValue,
+      setInitialCashValue,
     }}>
       {children}
     </TableContext.Provider>

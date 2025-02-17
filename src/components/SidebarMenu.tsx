@@ -8,11 +8,27 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Menu, LayoutGrid, DollarSign, Users, Settings } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
+import { useState } from "react";
+import { useTable } from "@/context/TableContext";
 
 const SidebarMenu = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  
+    const [initialValue, setInitialValue] = useState("");
+  const { setInitialCashValue } = useTable();
+
   const menuItems = [
     { name: "Mesa", path: "/tables", icon: LayoutGrid },
     { name: "Caixa", path: "/cashier", icon: DollarSign },
@@ -57,7 +73,7 @@ const SidebarMenu = () => {
             );
           })}
         </div>
-      </SheetContent>
+              </SheetContent>
     </Sheet>
   );
 };
