@@ -56,7 +56,6 @@ const ControleDeCaixa: React.FC<CaixaProps> = ({ caixaAberto, setCaixaAberto, on
   console.log("ControleDeCaixa - caixaData:", caixaData);
 
   useEffect(() => {
-    localStorage.setItem('caixaData', JSON.stringify(caixaData));
   }, [caixaData]);
 
   useEffect(() => {
