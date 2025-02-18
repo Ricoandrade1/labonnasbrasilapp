@@ -22,10 +22,10 @@ import PDVPanel from "@/components/PDVPanel";
 import { addTable } from "@/lib/firebase";
 import Caixa from "@/components/Caixa";
 import { useTable } from "@/context/TableContext";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { getTables } from "@/lib/firebase";
 import { db } from "../lib/firebase";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, query, where, doc, getDoc } from "firebase/firestore";
 
 
 interface OpenTable {
@@ -48,84 +48,43 @@ const Cashier = () => {
   const [transactions, setTransactions] = React.useState<Transaction[]>([]);
   const [filter, setFilter] = React.useState<string>('Todos');
   const [caixaAberto, setCaixaAberto] = useState(false);
+  const [caixaData, setCaixaData] = useState<any>(null);
+  const [totalEntrada, setTotalEntrada] = useState(0);
+  const [totalSaida, setTotalSaida] = useState(0);
+  const [totalCompra, setTotalCompra] = useState(0);
+  const [saldoFinal, setSaldoFinal] = useState(0);
+
+  const handleCaixaFechado = useCallback(() => {
+    setCaixaAberto(false);
+    setTransactions([]);
+  }, []);
+
+  const fetchTables = useCallback(async () => {
+    const tables = await getTables();
+    setOpenTables(tables);
+  }, []);
 
   React.useEffect(() => {
-    const fetchTables = async () => {
-      const tables = await getTables();
-      setOpenTables(tables);
-    };
-
     const fetchTransactions = async () => {
-      const transactionsData: Transaction[] = [];
+      if (!caixaData?.id) {
+        setTransactions([]);
+        return;
+      }
 
-      // Fetch from 'transactions' collection
-      const transactionsCollection = collection(db, 'transactions');
-      const transactionsSnapshot = await getDocs(transactionsCollection);
-      transactionsSnapshot.forEach(doc => {
-        const data = doc.data();
-        transactionsData.push({
-          metodo: data.type || 'N/A',
-          valentia: data.amount || 0,
-          descricao: data.description || data.tipo || 'N/A',
-          timestamp: data.timestamp ? data.timestamp.toDate() : new Date(),
-        });
-      });
+      const pdvDocRef = doc(db, 'pdv', caixaData.id);
+      const pdvDocSnapshot = await getDoc(pdvDocRef);
 
-      // Fetch from 'ControleFinanceiro' collection
-      const controleFinanceiroCollection = collection(db, 'ControleFinanceiro');
-      const controleFinanceiroSnapshot = await getDocs(controleFinanceiroCollection);
-      controleFinanceiroSnapshot.forEach(doc => {
-        const data = doc.data();
-        transactionsData.push({
-          metodo: data.tipo || 'N/A',
-          valentia: data.valor || 0,
-          descricao: data.descricao || data.tipo || 'N/A',
-          timestamp: data.timestamp ? data.timestamp.toDate() : new Date(),
-        });
-      });
-
-      // Fetch from 'aberturadecaixa' collection
-      const aberturaDeCaixaCollection = collection(db, 'aberturadecaixa');
-      const aberturaDeCaixaSnapshot = await getDocs(aberturaDeCaixaCollection);
-      aberturaDeCaixaSnapshot.forEach(doc => {
-        const data = doc.data();
-        console.log("Abertura de Caixa data:", data); // Adicionado para debug
-        transactionsData.push({
-          metodo: 'Abertura de Caixa',
-          valentia: data.valorInicial || 0,
-          descricao: 'Abertura de caixa',
-          timestamp: data.timestamp ? data.timestamp.toDate() : new Date(),
-        });
-      });
-
-      // Fetch from 'fechamentodecaixa' collection
-      const fechamentoDeCaixaCollection = collection(db, 'fechamentodecaixa');
-      const fechamentoDeCaixaSnapshot = await getDocs(fechamentoDeCaixaCollection);
-      fechamentoDeCaixaSnapshot.forEach(doc => {
-        const data = doc.data();
-        transactionsData.push({
-          metodo: 'Fechamento de Caixa',
-          valentia: data.valorFechamento || 0,
-          descricao: 'Fechamento de caixa',
-          timestamp: data.timestamp ? data.timestamp.toDate() : new Date(),
-        });
-      });
-
-
-      // Sort transactions by timestamp
-      transactionsData.sort((a, b) => {
-        const dateA = new Date(a.timestamp);
-        const dateB = new Date(b.timestamp);
-        return dateB.getTime() - dateA.getTime(); // Sort in descending order (newest first)
-      });
-
-      setTransactions(transactionsData);
+      if (pdvDocSnapshot.exists()) {
+        const pdvData = pdvDocSnapshot.data() as { transactions: any[] };
+        setTransactions(pdvData.transactions || []);
+      } else {
+        setTransactions([]);
+      }
     };
 
     fetchTables();
     fetchTransactions();
-    setCaixaAberto(caixaAberto); // Adicionado para forçar a atualização
-  }, [caixaAberto]);
+  }, [caixaAberto, caixaData, fetchTables]);
 
   const filteredTransactions = filter === 'Todos'
     ? transactions
@@ -144,7 +103,7 @@ const Cashier = () => {
         await addTable(newTable);
         navigate(`/tablecaixa`);
       }}>Abrir Mesa</Button>
-      <Caixa caixaAberto={caixaAberto} setCaixaAberto={setCaixaAberto} />
+      <Caixa caixaAberto={caixaAberto} setCaixaAberto={setCaixaAberto} onCaixaFechado={handleCaixaFechado} setCaixaData={setCaixaData} totalEntrada={totalEntrada} setTotalEntrada={setTotalEntrada} totalSaida={totalSaida} setTotalSaida={setTotalSaida} totalCompra={totalCompra} setTotalCompra={setTotalCompra} saldoFinal={saldoFinal} setSaldoFinal={setSaldoFinal} />
       <div className="grid gap-6 md:grid-cols-2">
         <Card className="mb-4">
           <CardHeader>

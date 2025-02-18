@@ -15,7 +15,12 @@ interface Transaction {
   date: string;
 }
 
-const FinancialControlNew = () => {
+interface FinancialControlNewProps {
+  setCaixaAberto: (aberto: boolean) => void;
+  caixaAberto: boolean;
+}
+
+const FinancialControlNew: React.FC<FinancialControlNewProps> = ({ setCaixaAberto, caixaAberto }) => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [type, setType] = useState<Transaction['type']>('entrada');
   const [amount, setAmount] = useState<number>(0);
@@ -27,7 +32,13 @@ const FinancialControlNew = () => {
   const [totalCompra, setTotalCompra] = useState(0);
   const [saldoFinal, setSaldoFinal] = useState(0);
 
-  useEffect(() => {
+ useEffect(() => {
+    if (!caixaAberto) {
+      setTotalEntrada(0);
+      setTotalSaida(0);
+      setTotalCompra(0);
+      setSaldoFinal(0);
+    }
     const fetchTransactions = async () => {
       if (!db) {
         console.error("Firebase não inicializado!");
@@ -36,7 +47,6 @@ const FinancialControlNew = () => {
 
       try {
         const controleFinanceiroCollection = collection(db, 'ControleFinanceiro');
-        const transactionsCollection = collection(db, 'transactions');
 
         const unsubscribeControleFinanceiro = onSnapshot(controleFinanceiroCollection, (snapshot) => {
           const controleFinanceiroList = snapshot.docs.map(doc => {
@@ -50,24 +60,10 @@ const FinancialControlNew = () => {
             } as Transaction;
           });
 
-          const unsubscribeTransactions = onSnapshot(transactionsCollection, (snapshot) => {
-            const transactionList = snapshot.docs.map(doc => {
-              const data = doc.data();
-              return {
-                id: doc.id,
-                type: data.type || 'entrada',
-                amount: data.amount || 0,
-                description: data.description || '',
-                date: data.date ? new Date(data.date).toISOString() : new Date().toISOString(),
-              } as Transaction;
-            });
-
-            setTransactions([...controleFinanceiroList, ...transactionList]);
-          });
+          setTransactions(controleFinanceiroList);
 
           return () => {
             unsubscribeControleFinanceiro();
-            unsubscribeTransactions();
           };
         });
       } catch (error) {
@@ -101,7 +97,7 @@ const FinancialControlNew = () => {
     calculateTotals();
   }, [transactions]);
 
-  const handleAddTransaction = async () => {
+ const handleAddTransaction = async () => {
     if (!db) {
       console.error("Firebase não inicializado!");
       return;
@@ -116,7 +112,7 @@ const FinancialControlNew = () => {
     };
 
     try {
-      const transactionsCollection = collection(db, 'transactions');
+      const transactionsCollection = collection(db, 'ControleFinanceiro');
       await addDoc(transactionsCollection, {
         amount: amount,
         date: new Date().toISOString(),
@@ -125,6 +121,14 @@ const FinancialControlNew = () => {
       });
       setAmount(0);
       setDescription('');
+      if (type === 'entrada') {
+        setTotalEntrada(prevTotalEntrada => prevTotalEntrada + amount);
+      } else if (type === 'saida') {
+        setTotalSaida(prevTotalSaida => prevTotalSaida + amount);
+      } else if (type === 'compra') {
+        setTotalCompra(prevTotalCompra => prevTotalCompra + amount);
+      }
+      setSaldoFinal(prevSaldoFinal => prevSaldoFinal + totalEntrada - totalSaida - totalCompra);
     } catch (error) {
       console.error("Erro ao adicionar transação:", error);
     }

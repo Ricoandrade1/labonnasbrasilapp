@@ -288,7 +288,6 @@ const PDVPanel = () => {
           mesaId={selectedTable?.mesaId}
           onConfirm={handlePaymentConfirm}
         />
-        <FinancialControlNew />
       </CardContent>
     </Card>
   );

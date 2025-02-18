@@ -6,10 +6,23 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
+import { useTable } from '../context/TableContext';
+import { useToast } from "@/hooks/use-toast";
+import FinancialControlNew from './FinancialControlNew';
 
 interface CaixaProps {
   caixaAberto: boolean;
   setCaixaAberto: (aberto: boolean) => void;
+  onCaixaFechado?: () => void;
+  setCaixaData?: (caixaData: any) => void;
+  totalEntrada: number;
+  setTotalEntrada: (totalEntrada: number) => void;
+  totalSaida: number;
+   setTotalSaida: (totalSaida: number) => void;
+  totalCompra: number;
+   setTotalCompra: (totalCompra: number) => void;
+  saldoFinal: number;
+   setSaldoFinal: (saldoFinal: number) => void;
 }
 
 interface CaixaData {
@@ -23,36 +36,67 @@ interface CaixaData {
   usuarioFechamento?: string;
   valorFinal?: number;
   status: 'aberto' | 'fechado';
+  transactions: any[];
 }
 
-const ControleDeCaixa: React.FC<CaixaProps> = ({ caixaAberto, setCaixaAberto }) => {
+const ControleDeCaixa: React.FC<CaixaProps> = ({ caixaAberto, setCaixaAberto, onCaixaFechado }) => {
   const { user } = useAuth();
+  const { tables } = useTable();
+  const { toast } = useToast();
   const [valorFinal, setValorFinal] = useState<number>(0);
-  const [valorInicial, setValorInicial] = useState<number>(
-    Number(localStorage.getItem('valorInicial')) || 0
-  );
+  const [valorInicial, setValorInicial] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [caixaData, setCaixaData] = useState<CaixaData | null>(null);
+  const [caixaData, setCaixaData] = useState<CaixaData | null>(() => {
+    const storedCaixaData = localStorage.getItem('caixaData');
+    return storedCaixaData ? JSON.parse(storedCaixaData) : null;
+  });
+
+  console.log("ControleDeCaixa - caixaAberto:", caixaAberto);
+  console.log("ControleDeCaixa - caixaData:", caixaData);
 
   useEffect(() => {
-    const verificarCaixaAberto = async () => {
+    localStorage.setItem('caixaData', JSON.stringify(caixaData));
+  }, [caixaData]);
+
+  useEffect(() => {
+    const fetchData = async () => {
       setLoading(true);
       setError(null);
       try {
         if (!user) {
           return;
         }
-        const caixasCollection = collection(db, 'aberturadecaixa');
-        const q = query(caixasCollection, where('status', '==', 'aberto'), where('usuarioAbertura', '==', user.id));
-        const querySnapshot = await getDocs(q);
-        setCaixaAberto(!querySnapshot.empty);
 
-        if (!querySnapshot.empty) {
-          const caixaDoc = querySnapshot.docs[0];
-          setCaixaData({ id: caixaDoc.id, ...caixaDoc.data() } as CaixaData);
+        // Fetch the latest Abertura de Caixa transaction
+        const aberturadecaixaCollection = collection(db, 'aberturadecaixa');
+        const fechamentodecaixaCollection = collection(db, 'fechamentodecaixa');
+        const dataAtual = new Date().toLocaleDateString();
+        const qAberto = query(aberturadecaixaCollection, where('status', '==', 'aberto'), where('usuarioAbertura', '==', user.id), where('dataAbertura', '==', dataAtual));
+        const qFechado = query(fechamentodecaixaCollection, where('usuarioAbertura', '==', user.id), where('dataAbertura', '==', dataAtual));
+
+        const [querySnapshotAberto, querySnapshotFechado] = await Promise.all([
+          getDocs(qAberto),
+          getDocs(qFechado),
+        ]);
+
+        if (!querySnapshotAberto.empty) {
+          const caixaDoc = querySnapshotAberto.docs[0];
+          const caixaData = { id: caixaDoc.id, ...caixaDoc.data() } as CaixaData;
+          setCaixaData(caixaData);
+          setCaixaAberto(true);
+          localStorage.setItem('caixaAberto', 'true');
+          console.log("Caixa encontrado com ID:", caixaDoc.id);
+        } else if (!querySnapshotFechado.empty) {
+          const caixaDoc = querySnapshotFechado.docs[0];
+          setCaixaData(null);
+          setCaixaAberto(false);
+          localStorage.setItem('caixaAberto', 'false');
+          console.log("Caixa já foi fechado");
         } else {
           setCaixaData(null);
+          setCaixaAberto(false);
+          localStorage.setItem('caixaAberto', 'false');
         }
       } catch (e: any) {
         setError('Erro ao verificar status do caixa: ' + e.message);
@@ -62,8 +106,8 @@ const ControleDeCaixa: React.FC<CaixaProps> = ({ caixaAberto, setCaixaAberto }) 
       }
     };
 
-    verificarCaixaAberto();
-  }, [user, setCaixaAberto]);
+    fetchData();
+  }, [user]);
 
   const handleAbrirCaixa = async (valorInicial: number) => {
     setError(null);
@@ -83,26 +127,18 @@ const ControleDeCaixa: React.FC<CaixaProps> = ({ caixaAberto, setCaixaAberto }) 
         return;
       }
 
-      console.log("Valor Inicial antes de addDoc:", valorInicial); // Adicionado para debug
+      console.log("Valor Inicial antes de addDoc:", valorInicial);
 
-      const caixasCollection = collection(db, 'aberturadecaixa');
-      const docRef = await addDoc(caixasCollection, {
+      const aberturadecaixaCollection = collection(db, 'aberturadecaixa');
+      const docRef = await addDoc(aberturadecaixaCollection, {
         dataAbertura: new Date().toLocaleDateString(),
         horaAbertura: new Date().toLocaleTimeString(),
         usuarioAbertura: user.id,
         valorInicial: valorInicial,
         status: 'aberto',
+        transactions: [], // Inicializa a lista de transações
       });
 
-      // Adicionar transação de abertura de caixa
-      const transactionsCollection = collection(db, 'transactions');
-      await addDoc(transactionsCollection, {
-        type: 'Abertura de Caixa',
-        description: 'Valor Inicial',
-        amount: valorInicial,
-        timestamp: new Date(),
-      });
-      console.log('Transação de abertura de caixa adicionada com sucesso!');
       setCaixaAberto(true);
       setCaixaData({
         id: docRef.id,
@@ -111,16 +147,46 @@ const ControleDeCaixa: React.FC<CaixaProps> = ({ caixaAberto, setCaixaAberto }) 
         usuarioAbertura: user.id,
         valorInicial: valorInicial,
         status: 'aberto',
+        transactions: [],
       });
+      console.log("Caixa aberto com ID:", docRef.id); // Adicionado log
     } catch (e: any) {
       setError('Erro ao abrir caixa: ' + e.message);
       console.error("Erro ao abrir caixa:", e);
     }
   };
 
+  useEffect(() => {
+    if (caixaAberto && user) {
+      // Adicionar transação de abertura de caixa
+      const addAberturaDeCaixaTransaction = async () => {
+        const transactionsCollection = collection(db, 'transactions');
+        await addDoc(transactionsCollection, {
+          type: 'Abertura de Caixa',
+          description: 'Valor Inicial',
+          amount: valorInicial,
+          timestamp: new Date(),
+        });
+        console.log('Transação de abertura de caixa adicionada com sucesso!');
+      };
+      addAberturaDeCaixaTransaction();
+    }
+  }, [caixaAberto, user, valorInicial]);
+
   const handleFecharCaixa = async () => {
     setError(null);
+    console.log("Tentando fechar o caixa com ID:", caixaData?.id); // Adicionado log
     try {
+      const hasOpenTables = tables.some(table => table.status !== 'available');
+      if (hasOpenTables) {
+        toast({
+          title: "Erro",
+          description: "Não é possível fechar o caixa com mesas abertas.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       if (!valorFinal) {
         setError('Valor final é obrigatório.');
         return;
@@ -136,29 +202,54 @@ const ControleDeCaixa: React.FC<CaixaProps> = ({ caixaAberto, setCaixaAberto }) 
         return;
       }
 
-      const caixaDocRef = doc(db, 'aberturadecaixa', caixaData.id);
+      // Buscar os valores atuais de Total de Entradas, Saídas e Compras
+      const financialControlCollection = collection(db, 'ControleFinanceiro');
+      const entradasQuery = query(financialControlCollection, where('tipo', '==', 'entrada'));
+      const saidasQuery = query(financialControlCollection, where('tipo', '==', 'saida'));
+      const comprasQuery = query(financialControlCollection, where('tipo', '==', 'compra'));
 
-      await updateDoc(caixaDocRef, {
-        dataFechamento: new Date().toLocaleDateString(),
-        horaFechamento: new Date().toLocaleTimeString(),
-        usuarioFechamento: user?.id,
-        valorFinal: valorFinal,
-        status: 'fechado',
-      });
+      const [entradasSnapshot, saidasSnapshot, comprasSnapshot] = await Promise.all([
+        getDocs(entradasQuery),
+        getDocs(saidasQuery),
+        getDocs(comprasQuery),
+      ]);
 
-      // Adicionar transação de fechamento de caixa
-      const transactionsCollection = collection(db, 'transactions');
-      await addDoc(transactionsCollection, {
-        type: 'Fechamento de Caixa',
-        description: 'Valor Final',
-        amount: valorFinal,
-        timestamp: new Date(),
-      });
-      console.log('Transação de fechamento de caixa adicionada com sucesso!');
+      const totalEntrada = entradasSnapshot.docs.reduce((sum, doc) => sum + doc.data().valor, 0);
+      const totalSaida = saidasSnapshot.docs.reduce((sum, doc) => sum + doc.data().valor, 0);
+      const totalCompra = comprasSnapshot.docs.reduce((sum, doc) => sum + doc.data().valor, 0);
+      const saldoFinal = totalEntrada - totalSaida - totalCompra;
+
+      try {
+        const fechamentodecaixaCollection = collection(db, 'fechamentodecaixa');
+        const docRef = await addDoc(fechamentodecaixaCollection, {
+          dataAbertura: caixaData.dataAbertura,
+          horaAbertura: caixaData.horaAbertura,
+          usuarioAbertura: caixaData.usuarioAbertura,
+          valorInicial: caixaData.valorInicial,
+          dataFechamento: new Date().toLocaleDateString(),
+          horaFechamento: new Date().toLocaleTimeString(),
+          usuarioFechamento: user?.id,
+          valorFinal: valorFinal,
+          status: 'fechado',
+          totalEntrada: totalEntrada,
+          totalSaida: totalSaida,
+          totalCompra: totalCompra,
+          saldoFinal: saldoFinal,
+        });
+
+        console.log("Caixa fechado com ID:", docRef.id);
+      } catch (error: any) {
+        setError('Erro ao fechar caixa: ' + error.message);
+        console.error("Erro ao fechar caixa:", error);
+        return;
+      }
 
       setValorFinal(0);
       setCaixaAberto(false);
       setCaixaData(null);
+      if (onCaixaFechado) {
+        onCaixaFechado();
+      }
     } catch (e: any) {
       setError('Erro ao fechar caixa: ' + e.message);
       console.error("Erro ao fechar caixa:", e);
@@ -193,12 +284,13 @@ const ControleDeCaixa: React.FC<CaixaProps> = ({ caixaAberto, setCaixaAberto }) 
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">
-        {user && caixaAberto ? (
+        <FinancialControlNew setCaixaAberto={setCaixaAberto} caixaAberto={caixaAberto}/>
+        {user && caixaAberto && caixaData ? (
           <div>
             <h2>Caixa Aberto</h2>
-            <p>Data de Abertura: {caixaData?.dataAbertura}</p>
-            <p>Hora de Abertura: {caixaData?.horaAbertura}</p>
-            <p>Valor Inicial: {caixaData?.valorInicial} €</p>
+            <p>Data de Abertura: {caixaData.dataAbertura}</p>
+            <p>Hora de Abertura: {caixaData.horaAbertura}</p>
+            <p>Valor Inicial: {caixaData.valorInicial} €</p>
             <div className="flex flex-col space-y-1.5">
               <Label htmlFor="valorFinal">Valor Final</Label>
               <Input
@@ -224,7 +316,6 @@ const ControleDeCaixa: React.FC<CaixaProps> = ({ caixaAberto, setCaixaAberto }) 
                 onChange={(e) => {
                   const newValue = Number(e.target.value);
                   setValorInicial(newValue);
-                  localStorage.setItem('valorInicial', String(newValue));
                 }}
               />
             </div>

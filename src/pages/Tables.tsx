@@ -278,56 +278,58 @@ const data = doc.data() as any;
       </div>
 
       {/* Tables Grid */}
-      <div className={`px-6 pb-6 ${caixaAberto ? '' : 'pointer-events-none opacity-50'}`}>
-        <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-            {loading ? (
-              <p>Carregando mesas...</p>
-            ) : tables.length > 0 ? (
-              tables
-                .filter((table, index, self) =>
-                  index === self.findIndex((t) => (
-                    t.id === table.id
-                  ))
-                )
-                .sort((a, b) => Number(a.tableNumber) - Number(b.tableNumber))
-                .map((table) => {
-                  const status = getStatusConfig(table.status);
-                  return (
-                    <button
-                      key={table.id}
-                      onClick={() => handleTableClick(String(table.id))}
-                      className={`relative group p-4 rounded-lg border transition-all duration-200 ${status.color} ${status.borderColor} hover:shadow-md ${table.status === "occupied" ? "bg-rose-100 border-rose-200" : ""}`}
-                    >
-                      <div className="flex flex-col items-center gap-2">
-                        <span className={`text-lg font-semibold ${status.textColor}`}>
-                          Mesa {String(table.tableNumber)}
-                        </span>
-                        {table.status !== "available" && (
-                          <>
-                            {/* <div className="flex items-center gap-1">
-                              <Users className="h-4 w-4 text-gray-500" />
-                              <span className="text-sm text-gray-600">{table.occupants}</span>
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              {table.timeSeated} • {table.server}
-                            </div> */}
-                          </>
-                        )}
-                        <span className={`text-xs font-medium ${status.textColor}`}>
-                          {status.label}
-                        </span>
-                      </div>
-                      <div className="absolute inset-0 border-2 border-[#518426] rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
-                    </button>
-                  );
-                })
-            ) : (
-              <p>Nenhuma mesa encontrada.</p>
-            )}
+      {caixaAberto && (
+        <div className={`px-6 pb-6`}>
+          <div className="max-w-7xl mx-auto">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+              {loading ? (
+                <p>Carregando mesas...</p>
+              ) : tables.length > 0 ? (
+                tables
+                  .filter((table, index, self) =>
+                    index === self.findIndex((t) => (
+                      t.id === table.id
+                    ))
+                  )
+                  .sort((a, b) => Number(a.tableNumber) - Number(b.tableNumber))
+                  .map((table) => {
+                    const status = getStatusConfig(table.status);
+                    return (
+                      <button
+                        key={table.id}
+                        onClick={() => handleTableClick(String(table.id))}
+                        className={`relative group p-4 rounded-lg border transition-all duration-200 ${status.color} ${status.borderColor} hover:shadow-md ${table.status === "occupied" ? "bg-rose-100 border-rose-200" : ""}`}
+                      >
+                        <div className="flex flex-col items-center gap-2">
+                          <span className={`text-lg font-semibold ${status.textColor}`}>
+                            Mesa {String(table.tableNumber)}
+                          </span>
+                          {table.status !== "available" && (
+                            <>
+                              {/* <div className="flex items-center gap-1">
+                                <Users className="h-4 w-4 text-gray-500" />
+                                <span className="text-sm text-gray-600">{table.occupants}</span>
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {table.timeSeated} • {table.server}
+                              </div> */}
+                            </>
+                          )}
+                          <span className={`text-xs font-medium ${status.textColor}`}>
+                            {status.label}
+                          </span>
+                        </div>
+                        <div className="absolute inset-0 border-2 border-[#518426] rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+                      </button>
+                    );
+                  })
+              ) : (
+                <p>Nenhuma mesa encontrada.</p>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      )}
       {/* <div className="flex justify-center space-x-4">
         <Button onClick={() => setAllTablesAvailable()}>Set All Tables Available</Button>
         <Button onClick={() => { localStorage.clear(); window.location.reload(); }}>Limpar Dados Locais</Button>

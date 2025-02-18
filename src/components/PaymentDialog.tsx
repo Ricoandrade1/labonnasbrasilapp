@@ -11,7 +11,8 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button";
 import { useTable } from "@/context/TableContext";
-import { db, collection, addDoc } from "@/lib/firebase";
+import { db, collection, addDoc, doc } from "@/lib/firebase";
+import { getDoc } from "firebase/firestore";
 import { useAuth } from "@/context/AuthContext"; // Importe o contexto de autenticação
 
 
@@ -98,18 +99,31 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({ paymentMethod, total, ope
                 // 2.1. Salvar a entrada no controle financeiro
                 console.log("Salvando entrada no controle financeiro (ControleFinanceiro)...");
                 console.log("Valor total:", total);
+
+                // Verificar se a mesa está aberta
                 try {
-                  await addDoc(collection(db, "ControleFinanceiro"), {
-                    categoria: "mesa",
-                    data: new Date().toISOString(),
-                    descricao: `Mesa ${tableId}`,
-                    tipo: "entrada",
-                    usuario: user.name,
-                    valor: total,
-                  });
-                  console.log("Entrada salva com sucesso no controle financeiro (ControleFinanceiro).");
+                  const tableDoc = await getDoc(doc(db, "Mesas", tableId));
+                  if (tableDoc.exists() && tableDoc.data().status === "occupied") {
+                    try {
+                      await addDoc(collection(db, "ControleFinanceiro"), {
+                        categoria: "mesa",
+                        data: new Date().toISOString(),
+                        descricao: `Mesa ${tableId}`,
+                        tipo: "entrada",
+                        usuario: user.name,
+                        valor: total,
+                      });
+                      console.log("Entrada salva com sucesso no controle financeiro (ControleFinanceiro).");
+                    } catch (error) {
+                      console.error("Erro ao salvar entrada no controle financeiro:", error);
+                    }
+                  } else {
+                    console.log("Mesa não está aberta. Transação não registrada no controle financeiro.");
+                    // TODO: Exibir mensagem de erro para o usuário
+                  }
                 } catch (error) {
-                  console.error("Erro ao salvar entrada no controle financeiro:", error);
+                  console.error("Erro ao buscar o status da mesa:", error);
+                  // TODO: Exibir mensagem de erro para o usuário
                 }
 
                 // 3. Chamar a função onConfirm para fechar o diálogo
