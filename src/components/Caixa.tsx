@@ -1,9 +1,14 @@
 import React from 'react';
 import ControleDeCaixa from './ControleDeCaixa';
 
-const Caixa = () => {
+interface CaixaProps {
+  caixaAberto: boolean;
+  setCaixaAberto: (aberto: boolean) => void;
+}
+
+const Caixa: React.FC<CaixaProps> = ({ caixaAberto, setCaixaAberto }) => {
   return (
-    <ControleDeCaixa />
+    <ControleDeCaixa caixaAberto={caixaAberto} setCaixaAberto={setCaixaAberto} />
   );
 };
 

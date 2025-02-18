@@ -41,7 +41,6 @@ const FinancialControlNew = () => {
         const unsubscribeControleFinanceiro = onSnapshot(controleFinanceiroCollection, (snapshot) => {
           const controleFinanceiroList = snapshot.docs.map(doc => {
             const data = doc.data();
-            console.log("FinancialControlNew - ControleFinanceiro doc data:", data);
             return {
               id: doc.id,
               type: data.tipo || 'entrada',
@@ -54,7 +53,6 @@ const FinancialControlNew = () => {
           const unsubscribeTransactions = onSnapshot(transactionsCollection, (snapshot) => {
             const transactionList = snapshot.docs.map(doc => {
               const data = doc.data();
-              console.log("FinancialControlNew - transactions doc data:", data);
               return {
                 id: doc.id,
                 type: data.type || 'entrada',
@@ -98,13 +96,8 @@ const FinancialControlNew = () => {
       setTotalSaida(saida);
       setTotalCompra(compra);
       setSaldoFinal(entrada - saida - compra);
-
-      console.log("FinancialControlNew - entrada:", entrada);
-      console.log("FinancialControlNew - saida:", saida);
-      console.log("FinancialControlNew - compra:", compra);
     };
 
-    console.log("FinancialControlNew - transactions:", transactions);
     calculateTotals();
   }, [transactions]);
 

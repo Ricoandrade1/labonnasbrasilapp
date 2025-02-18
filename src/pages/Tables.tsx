@@ -7,6 +7,7 @@ import { useTable } from "@/context/TableContext";
 import { useEffect, useState } from "react";
 import { TableStatus } from "@/context/TableContext";
 import { db, collection, getDocs, getFirebaseOrderHistory, query, where } from "@/lib/api";
+import { CardContent } from "@/components/ui/card";
 
 interface Table {
   id: string | number;
@@ -16,6 +17,30 @@ interface Table {
   totalAmount: number;
   openingTime?: string;
 }
+
+const AlertMessage = () => (
+  <div className="fixed top-0 left-0 w-full h-full flex items-center justify-center bg-gray-500 bg-opacity-50 z-50">
+    <Card className="w-full max-w-md">
+      <CardContent className="bg-red-100 border border-red-500 text-red-700 p-4 rounded-md">
+        <div className="flex items-center space-x-2">
+          <span className="font-bold">🔔 ATENÇÃO! O CAIXA AINDA NÃO FOI ABERTO 🔔</span>
+        </div>
+        <p className="mt-2">
+          💰 Para iniciar o atendimento, peça ao caixa ou ao gerente para abrir o caixa e informar o valor inicial de operação.
+        </p>
+        <div className="mt-4">
+          <p>⚠️ IMPORTANTE:</p>
+          <ul className="list-disc pl-5">
+            <li>✅ Todos os registros devem ser feitos com máxima atenção.</li>
+            <li>🚫 Nenhuma comanda pode ser cancelada sem a validação dos administradores.</li>
+            <li>💳 Caso haja qualquer divergência financeira, os responsáveis serão notificados e deverão prestar esclarecimentos.</li>
+          </ul>
+        </div>
+        <p className="mt-4">Aguarde a liberação do sistema para continuar os atendimentos.</p>
+      </CardContent>
+    </Card>
+  </div>
+);
 
 const calculateAverageTime = (tables: Table[]): string => {
   const occupiedTables = tables.filter(t => t.status === "occupied");
@@ -45,12 +70,29 @@ const Tables = () => {
   const { tables, setAllTablesAvailable, forceUpdateTables, setTables } = tableContext;
   const [loading, setLoading] = useState(true);
   const [activeOrders, setActiveOrders] = useState<any[]>([]);
+  const [caixaAberto, setCaixaAberto] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated) {
       navigate("/login");
     }
   }, [isAuthenticated, navigate]);
+
+  useEffect(() => {
+    const verificarCaixaAberto = async () => {
+      try {
+        const caixasCollection = collection(db, 'aberturadecaixa');
+        const q = query(caixasCollection, where('status', '==', 'aberto'));
+        const querySnapshot = await getDocs(q);
+        setCaixaAberto(!querySnapshot.empty);
+      } catch (error) {
+        console.error("Erro ao verificar status do caixa:", error);
+        setCaixaAberto(false);
+      }
+    };
+
+    verificarCaixaAberto();
+  }, []);
 
   const fetchTables = async () => {
     try {
@@ -183,18 +225,25 @@ const data = doc.data() as any;
         </div>
       </div>
 
+      {/* Alert Message */}
+      {caixaAberto ? null : (
+        <div className="fixed top-0 left-0 w-full h-full flex items-center justify-center bg-gray-500 bg-opacity-50 z-40">
+          <AlertMessage />
+        </div>
+      )}
+
       {/* Stats Overview */}
-      <div className="pt-24 pb-6 px-6">
+      <div className={`pt-24 pb-6 px-6 ${caixaAberto ? '' : 'pointer-events-none opacity-50'}`}>
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card className="p-4 flex items-center gap-4">
             <div className="p-3 bg-emerald-100 rounded-full">
               <Users className="h-6 w-6 text-emerald-600" />
             </div>
             <div>
-<p className="text-sm text-gray-500">Mesas Ocupadas</p>
-<p className="text-2xl font-bold text-gray-900">
-  {tables.filter(table => table.status === "occupied").length} / {tables.length}
-</p>
+              <p className="text-sm text-gray-500">Mesas Ocupadas</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {tables.filter(table => table.status === "occupied").length} / {tables.length}
+              </p>
             </div>
           </Card>
 
@@ -229,7 +278,7 @@ const data = doc.data() as any;
       </div>
 
       {/* Tables Grid */}
-      <div className="px-6 pb-6">
+      <div className={`px-6 pb-6 ${caixaAberto ? '' : 'pointer-events-none opacity-50'}`}>
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
             {loading ? (
@@ -258,18 +307,18 @@ const data = doc.data() as any;
                           <>
                             {/* <div className="flex items-center gap-1">
                               <Users className="h-4 w-4 text-gray-500" />
-                            <span className="text-sm text-gray-600">{table.occupants}</span>
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            {table.timeSeated} • {table.server}
-                          </div> */}
+                              <span className="text-sm text-gray-600">{table.occupants}</span>
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {table.timeSeated} • {table.server}
+                            </div> */}
                           </>
-                      )}
-                      <span className={`text-xs font-medium ${status.textColor}`}>
-                        {status.label}
-                      </span>
-                    </div>
-                    <div className="absolute inset-0 border-2 border-[#518426] rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+                        )}
+                        <span className={`text-xs font-medium ${status.textColor}`}>
+                          {status.label}
+                        </span>
+                      </div>
+                      <div className="absolute inset-0 border-2 border-[#518426] rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
                     </button>
                   );
                 })

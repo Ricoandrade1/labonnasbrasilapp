@@ -22,7 +22,7 @@ import PDVPanel from "@/components/PDVPanel";
 import { addTable } from "@/lib/firebase";
 import Caixa from "@/components/Caixa";
 import { useTable } from "@/context/TableContext";
-
+import { useState, useEffect } from "react";
 import { getTables } from "@/lib/firebase";
 import { db } from "../lib/firebase";
 import { collection, getDocs } from "firebase/firestore";
@@ -39,6 +39,7 @@ interface Transaction {
   metodo: string;
   valentia: number;
   descricao: string;
+  timestamp?: Date;
 }
 
 const Cashier = () => {
@@ -46,6 +47,7 @@ const Cashier = () => {
   const [openTables, setOpenTables] = React.useState<OpenTable[]>([]);
   const [transactions, setTransactions] = React.useState<Transaction[]>([]);
   const [filter, setFilter] = React.useState<string>('Todos');
+  const [caixaAberto, setCaixaAberto] = useState(false);
 
   React.useEffect(() => {
     const fetchTables = async () => {
@@ -65,6 +67,7 @@ const Cashier = () => {
           metodo: data.type || 'N/A',
           valentia: data.amount || 0,
           descricao: data.description || data.tipo || 'N/A',
+          timestamp: data.timestamp ? data.timestamp.toDate() : new Date(),
         });
       });
 
@@ -77,7 +80,43 @@ const Cashier = () => {
           metodo: data.tipo || 'N/A',
           valentia: data.valor || 0,
           descricao: data.descricao || data.tipo || 'N/A',
+          timestamp: data.timestamp ? data.timestamp.toDate() : new Date(),
         });
+      });
+
+      // Fetch from 'aberturadecaixa' collection
+      const aberturaDeCaixaCollection = collection(db, 'aberturadecaixa');
+      const aberturaDeCaixaSnapshot = await getDocs(aberturaDeCaixaCollection);
+      aberturaDeCaixaSnapshot.forEach(doc => {
+        const data = doc.data();
+        console.log("Abertura de Caixa data:", data); // Adicionado para debug
+        transactionsData.push({
+          metodo: 'Abertura de Caixa',
+          valentia: data.valorInicial || 0,
+          descricao: 'Abertura de caixa',
+          timestamp: data.timestamp ? data.timestamp.toDate() : new Date(),
+        });
+      });
+
+      // Fetch from 'fechamentodecaixa' collection
+      const fechamentoDeCaixaCollection = collection(db, 'fechamentodecaixa');
+      const fechamentoDeCaixaSnapshot = await getDocs(fechamentoDeCaixaCollection);
+      fechamentoDeCaixaSnapshot.forEach(doc => {
+        const data = doc.data();
+        transactionsData.push({
+          metodo: 'Fechamento de Caixa',
+          valentia: data.valorFechamento || 0,
+          descricao: 'Fechamento de caixa',
+          timestamp: data.timestamp ? data.timestamp.toDate() : new Date(),
+        });
+      });
+
+
+      // Sort transactions by timestamp
+      transactionsData.sort((a, b) => {
+        const dateA = new Date(a.timestamp);
+        const dateB = new Date(b.timestamp);
+        return dateB.getTime() - dateA.getTime(); // Sort in descending order (newest first)
       });
 
       setTransactions(transactionsData);
@@ -85,7 +124,8 @@ const Cashier = () => {
 
     fetchTables();
     fetchTransactions();
-  }, []);
+    setCaixaAberto(caixaAberto); // Adicionado para forçar a atualização
+  }, [caixaAberto]);
 
   const filteredTransactions = filter === 'Todos'
     ? transactions
@@ -94,7 +134,7 @@ const Cashier = () => {
   return (
     <div className="container mx-auto py-6 space-y-6">
       <PDVPanel />
-            <div className="flex justify-between items-center mb-4">
+      <div className="flex justify-between items-center mb-4">
       </div>
       <Button onClick={async () => {
         const newTable = {
@@ -104,7 +144,7 @@ const Cashier = () => {
         await addTable(newTable);
         navigate(`/tablecaixa`);
       }}>Abrir Mesa</Button>
-      <Caixa />
+      <Caixa caixaAberto={caixaAberto} setCaixaAberto={setCaixaAberto} />
       <div className="grid gap-6 md:grid-cols-2">
         <Card className="mb-4">
           <CardHeader>
@@ -177,6 +217,7 @@ const Cashier = () => {
                   <TableHead>Método</TableHead>
                   <TableHead>Descrição</TableHead>
                   <TableHead>Valentia</TableHead>
+                  <TableHead>Data</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -185,6 +226,7 @@ const Cashier = () => {
                     <TableCell>{transaction.metodo}</TableCell>
                     <TableCell className="break-words">{transaction.descricao.length > 30 ? transaction.descricao.substring(0, 30) + "..." : transaction.descricao}</TableCell>
                     <TableCell>€ {transaction.valentia.toFixed(2)}</TableCell>
+                    <TableCell>{transaction.timestamp?.toLocaleDateString()}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
