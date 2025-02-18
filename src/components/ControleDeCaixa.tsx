@@ -156,18 +156,25 @@ const ControleDeCaixa: React.FC<CaixaProps> = ({ caixaAberto, setCaixaAberto, on
     }
   };
 
+  const [caixaAberturaTransactionAdicionada, setCaixaAberturaTransactionAdicionada] = useState(false);
+
   useEffect(() => {
-    if (caixaAberto && user) {
+    if (caixaAberto && user && !caixaAberturaTransactionAdicionada) {
+      let transactionAdicionada = false;
       // Adicionar transação de abertura de caixa
       const addAberturaDeCaixaTransaction = async () => {
-        const transactionsCollection = collection(db, 'transactions');
-        await addDoc(transactionsCollection, {
-          type: 'Abertura de Caixa',
-          description: 'Valor Inicial',
-          amount: valorInicial,
-          timestamp: new Date(),
-        });
-        console.log('Transação de abertura de caixa adicionada com sucesso!');
+        if (!transactionAdicionada) {
+          const transactionsCollection = collection(db, 'transactions');
+          await addDoc(transactionsCollection, {
+            type: 'Abertura de Caixa',
+            description: 'Valor Inicial',
+            amount: valorInicial,
+            timestamp: new Date(),
+          });
+          console.log('Transação de abertura de caixa adicionada com sucesso!');
+          transactionAdicionada = true;
+          setCaixaAberturaTransactionAdicionada(true);
+        }
       };
       addAberturaDeCaixaTransaction();
     }
