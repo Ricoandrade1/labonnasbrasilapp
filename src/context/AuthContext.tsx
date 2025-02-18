@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { doc, getDoc, getFirestore, collection, query, where, getDocs } from "firebase/firestore";
 import app, { getFirestoreInstance } from "@/lib/firebase";
 
-type Role = "owner" | "manager" | "cashier" | "waiter" | "caixa";
+type Role = "Caixa" | "gerente" | "adm" | "garcom" | "Função não definida";
 
 interface User {
   id: string;
@@ -25,6 +25,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [caixaAberto, setCaixaAberto] = useState<boolean>(false);
   const db = getFirestoreInstance();
 
+  useEffect(() => {
+    console.log("AuthProvider montado");
+    const storedUser = sessionStorage.getItem("user");
+    if (storedUser) {
+      const storedUserParsed = JSON.parse(storedUser);
+      const user: User = {
+        id: storedUserParsed.id,
+        name: storedUserParsed.name,
+        role: storedUserParsed.role,
+        storeId: storedUserParsed.storeId,
+      };
+      console.log("Usuário recuperado do sessionStorage:", user);
+      setUser(user);
+      setCaixaAberto(true);
+    } else {
+      console.log("Nenhum usuário encontrado no sessionStorage.");
+    }
+    return () => {
+      console.log("AuthProvider desmontado");
+    };
+  }, []);
+
   const verificarCaixaAberto = async (userId: string): Promise<boolean> => {
     try {
       const caixasCollection = collection(db, 'aberturadeciaxa - fechamentodecaixa');
@@ -45,10 +67,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (userDoc.exists()) {
         const userData = userDoc.data();
         console.log("Dados do usuário do Firestore:", userData);
+        console.log("AuthContext.tsx - userData:", userData);
         const loggedInUser: User = {
           id: userData.email,
           name: userData.nome,
-          role: "owner",
+          role: userData.role ? userData.role as Role : "Função não definida",
           storeId: "1",
         };
         console.log("Role do usuário:", loggedInUser.role);
@@ -56,10 +79,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // if (!isCaixaAberto) {
         //   throw new Error("Caixa precisa ser aberto");
         // }
+        console.log("AuthContext.tsx - loggedInUser:", loggedInUser);
         setUser(loggedInUser);
         setCaixaAberto(true);
-        localStorage.clear();
-        localStorage.setItem("user", JSON.stringify(loggedInUser));
+        console.log("AuthContext.tsx - loggedInUser.role:", loggedInUser.role);
+        sessionStorage.setItem("user", JSON.stringify(loggedInUser));
       } else {
         throw new Error("Usuário não encontrado");
       }
@@ -80,21 +104,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = () => {
     setUser(null);
     setCaixaAberto(false);
-    localStorage.removeItem("user");
+    sessionStorage.removeItem("user");
   };
-
-  useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      const user = JSON.parse(storedUser);
-      verificarCaixaAberto(user.id).then(isCaixaAberto => {
-        if (isCaixaAberto) {
-          setUser(user);
-          setCaixaAberto(true);
-        }
-      });
-    }
-  }, []);
 
   return (
     <AuthContext.Provider

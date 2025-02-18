@@ -98,6 +98,7 @@ const data = doc.data() as any;
 
  useEffect(() => {
     console.log("Tables.tsx - useEffect triggered");
+    console.log("Tables.tsx - user:", user);
     fetchTables();
   }, [setTables]);
 
@@ -146,6 +147,7 @@ const data = doc.data() as any;
     navigate(`/menu?table=${tableId}`);
   };
 
+  console.log("Tables.tsx - user?.role:", user?.role);
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -158,7 +160,11 @@ const data = doc.data() as any;
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-full">
               <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <span className="text-sm font-medium text-gray-700">{user?.name} ({Array.isArray(user?.role) ? user.role.join(", ") : user?.role})</span>
+              {user ? (
+                <span className="text-sm font-medium text-gray-700">{user?.name} - {user?.role ? (Array.isArray(user?.role) ? user?.role?.join(", ") : user?.role) : "Função não definida"}</span>
+              ) : (
+                <span className="text-sm font-medium text-gray-700">Carregando...</span>
+              )}
             </div>
             <Button
               variant="outline"

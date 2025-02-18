@@ -94,7 +94,6 @@ const Cashier = () => {
   return (
     <div className="container mx-auto py-6 space-y-6">
       <PDVPanel />
-      <Caixa />
             <div className="flex justify-between items-center mb-4">
       </div>
       <Button onClick={async () => {
@@ -105,6 +104,7 @@ const Cashier = () => {
         await addTable(newTable);
         navigate(`/tablecaixa`);
       }}>Abrir Mesa</Button>
+      <Caixa />
       <div className="grid gap-6 md:grid-cols-2">
         <Card className="mb-4">
           <CardHeader>

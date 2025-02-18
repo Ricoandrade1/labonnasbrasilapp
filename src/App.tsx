@@ -14,24 +14,24 @@ import SidebarMenu from "@/components/SidebarMenu";
 import Test from "@/pages/Test";
 import Cashier from "@/pages/Cashier";
 import MenuSelectionCaixa from "@/pages/MenuSelectionCaixa";
-import TableCaixa from "@/pages/TableCaixa";
 import { TableProvider } from "@/context/TableContext";
 import ResetTables from "./components/ResetTables";
 import { createUniqueTables } from './lib/firebase';
 
-import { ReactNode } from 'react';
+import { ReactNode, useMemo } from 'react';
 
 interface PrivateRouteProps {
   children: React.ReactNode;
 }
 
-function PrivateRoute({ children }: PrivateRouteProps) {
+const PrivateRoute = React.memo(({ children }: PrivateRouteProps) => {
   const { isAuthenticated } = useAuth();
+  console.log("isAuthenticated:", isAuthenticated);
   if (!isAuthenticated) {
     return <div>Não autenticado</div>;
   }
   return children;
-}
+});
 
 function App() {
   useEffect(() => {
@@ -50,14 +50,6 @@ function App() {
               element={
                 <PrivateRoute>
                   <Tables />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/tablecaixa"
-              element={
-                <PrivateRoute>
-                  <TableCaixa />
                 </PrivateRoute>
               }
             />
