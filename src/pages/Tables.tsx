@@ -79,15 +79,34 @@ const Tables = () => {
   }, [isAuthenticated, navigate]);
 
   useEffect(() => {
-    const verificarCaixaAberto = async () => {
+   const verificarCaixaAberto = async () => {
       try {
-        const caixasCollection = collection(db, 'aberturadecaixa');
-        const q = query(caixasCollection, where('status', '==', 'aberto'));
-        const querySnapshot = await getDocs(q);
-        setCaixaAberto(!querySnapshot.empty);
+        const dataAtual = new Date().toLocaleDateString();
+        const fechamentodecaixaCollection = collection(db, 'fechamentodecaixa');
+        const qFechado = query(
+          fechamentodecaixaCollection,
+          where('usuarioAbertura', '==', user.id),
+          where('dataAbertura', '==', dataAtual)
+        );
+        const querySnapshotFechado = await getDocs(qFechado);
+
+        if (!querySnapshotFechado.empty) {
+          // Caixa fechado
+          setCaixaAberto(false);
+          console.log("Caixa já foi fechado (Firebase)");
+        } else {
+          // Caixa aberto ou não encontrado
+          const aberturadecaixaCollection = collection(db, 'aberturadecaixa');
+          const qAberto = query(
+            aberturadecaixaCollection,
+            where('status', '==', 'aberto')
+          );
+          const querySnapshotAberto = await getDocs(qAberto);
+          setCaixaAberto(!querySnapshotAberto.empty);
+        }
       } catch (error) {
         console.error("Erro ao verificar status do caixa:", error);
-        setCaixaAberto(false);
+        setCaixaAberto(true);
       }
     };
 

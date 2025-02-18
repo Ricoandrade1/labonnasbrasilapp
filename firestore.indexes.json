@@ -1,1 +1,17 @@
-{}
+{
+  "indexes": [
+    {
+      "collectionGroup": "aberturadecaixa - fechamentodecaixa",
+      "fields": [
+        {
+          "fieldPath": "usuarioAbertura",
+          "mode": "ASCENDING"
+        },
+        {
+          "fieldPath": "horaAbertura",
+          "mode": "DESCENDING"
+        }
+      ]
+    }
+  ]
+}

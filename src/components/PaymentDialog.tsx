@@ -88,13 +88,18 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({ paymentMethod, total, ope
 
                 // 2. Salvar o fechamento da mesa no Firebase
                 console.log("Salvando fechamento da mesa no Firebase (Caixa)...");
-                await addDoc(collection(db, "Caixa"), {
-                  tableId: tableId,
-                  paymentMethod: paymentMethod,
-                  total: total,
-                  timestamp: new Date().toISOString(),
-                });
-                console.log("Fechamento da mesa salvo com sucesso no Firebase (Caixa).");
+                const tableDoc = await getDoc(doc(db, "Mesas", tableId));
+                if (tableDoc.exists() && tableDoc.data().status === "occupied") {
+                  await addDoc(collection(db, "Caixa"), {
+                    tableId: tableId,
+                    paymentMethod: paymentMethod,
+                    total: total,
+                    timestamp: new Date().toISOString(),
+                  });
+                  console.log("Fechamento da mesa salvo com sucesso no Firebase (Caixa).");
+                } else {
+                  console.log("Mesa não está aberta. Transação não registrada no controle de caixa.");
+                }
 
                 // 2.1. Salvar a entrada no controle financeiro
                 console.log("Salvando entrada no controle financeiro (ControleFinanceiro)...");
