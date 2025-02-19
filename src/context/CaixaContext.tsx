@@ -1,9 +1,10 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { db, doc, getDoc, setDoc } from '../lib/api';
+import { db, doc, getDoc, setDoc, collection, getDocs } from '../lib/api';
 
 interface CaixaContextProps {
   caixaAberto: boolean;
   setCaixaAberto: (aberto: boolean) => void;
+  totalCaixa: number;
 }
 
 const CaixaContext = createContext<CaixaContextProps | undefined>(undefined);
@@ -15,6 +16,23 @@ export const CaixaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const storedValue = localStorage.getItem(LOCAL_STORAGE_KEY);
     return storedValue === 'true' ? true : false;
   });
+
+  const [totalCaixa, setTotalCaixa] = useState(0);
+
+  const fetchTotalPdv = async () => {
+    try {
+      const pdvCollection = collection(db, "pdv");
+      const pdvSnapshot = await getDocs(pdvCollection);
+      let total = 0;
+      pdvSnapshot.forEach((doc) => {
+        const data = doc.data();
+        total += data.total || 0;
+      });
+      setTotalCaixa(total);
+    } catch (error) {
+      console.error("Erro ao buscar os valores do PDV:", error);
+    }
+  };
 
   useEffect(() => {
     const fetchCaixaAberto = async () => {
@@ -37,6 +55,7 @@ export const CaixaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
 
     fetchCaixaAberto();
+    fetchTotalPdv();
   }, []);
 
   useEffect(() => {
@@ -55,7 +74,7 @@ export const CaixaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [caixaAberto]);
 
   return (
-    <CaixaContext.Provider value={{ caixaAberto, setCaixaAberto }}>
+    <CaixaContext.Provider value={{ caixaAberto, setCaixaAberto, totalCaixa }}>
       {children}
     </CaixaContext.Provider>
   );

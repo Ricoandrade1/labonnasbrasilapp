@@ -19,19 +19,19 @@ interface FinancialControlNewProps {
   setCaixaAberto: (aberto: boolean) => void;
   caixaAberto: boolean;
   valorInicial: number;
+  totalEntrada: number;
+  totalSaida: number;
+  totalCompra: number;
+  saldoFinal: number;
 }
 
-const FinancialControlNew: React.FC<FinancialControlNewProps> = ({ setCaixaAberto, caixaAberto, valorInicial }) => {
+const FinancialControlNew: React.FC<FinancialControlNewProps> = ({ setCaixaAberto, caixaAberto, valorInicial, totalEntrada, totalSaida, totalCompra, saldoFinal }) => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [type, setType] = useState<Transaction['type']>('entrada');
   const [amount, setAmount] = useState<number>(0);
   const [description, setDescription] = useState<string>('');
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
-  const [totalEntrada, setTotalEntrada] = useState(0);
-  const [totalSaida, setTotalSaida] = useState(0);
-  const [totalCompra, setTotalCompra] = useState(0);
-  const [saldoFinal, setSaldoFinal] = useState(0);
 
   useEffect(() => {
     const fetchFinancialData = async () => {

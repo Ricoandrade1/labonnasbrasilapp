@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../lib/firebase';
-import { collection, addDoc, getDocs, query, where, doc, updateDoc, setDoc, getDoc, orderBy, limit } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, where, doc, updateDoc, setDoc, getDoc, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,14 +14,6 @@ import { useCaixa } from '../context/CaixaContext';
 interface CaixaProps {
   onCaixaFechado?: () => void;
   setCaixaData?: (caixaData: any) => void;
-  totalEntrada: number;
-  setTotalEntrada: (totalEntrada: number) => void;
-  totalSaida: number;
-  setTotalSaida: (totalSaida: number) => void;
-  totalCompra: number;
-  setTotalCompra: (totalCompra: number) => void;
-  saldoFinal: number;
-  setSaldoFinal: (saldoFinal: number) => void;
 }
 
 interface CaixaData {
@@ -49,6 +41,33 @@ const ControleDeCaixa: React.FC<CaixaProps> = ({ onCaixaFechado }) => {
   const [error, setError] = useState<string | null>(null);
   const [caixaDataPersistida, setCaixaData] = useState<CaixaData | null>(null);
   const [caixaIdPersistido, setCaixaIdPersistido] = useState<string | null>(null);
+  const [totalEntrada, setTotalEntrada] = useState<number>(0);
+  const [totalSaida, setTotalSaida] = useState<number>(0);
+  const [totalCompra, setTotalCompra] = useState<number>(0);
+  const [saldoFinal, setSaldoFinal] = useState<number>(0);
+
+ const fetchTotalPdv = () => {
+    try {
+      const pdvCollection = collection(db, "pdv");
+      const unsubscribe = onSnapshot(pdvCollection, (snapshot) => {
+        let total = 0;
+        snapshot.docs.forEach((doc) => {
+          const data = doc.data();
+          total += data.total || 0;
+        });
+        setTotalEntrada(total);
+		calculateSaldoFinal();
+      });
+      return unsubscribe;
+    } catch (error) {
+      console.error("Erro ao buscar os valores do PDV:", error);
+    }
+  };
+
+  const calculateSaldoFinal = () => {
+    const saldo = totalEntrada - totalSaida - totalCompra;
+    setSaldoFinal(saldo);
+  };
 
   console.log("ControleDeCaixa - caixaAberto:", caixaAberto);
   console.log("ControleDeCaixa - caixaData:", caixaDataPersistida);
@@ -57,7 +76,8 @@ const ControleDeCaixa: React.FC<CaixaProps> = ({ onCaixaFechado }) => {
   }, [caixaDataPersistida]);
 
   useEffect(() => {
-    const fetchData = async () => {
+    const unsubscribePdv = fetchTotalPdv();
+	const fetchData = async () => {
       setLoading(true);
       setError(null);
       try {
@@ -121,7 +141,14 @@ const ControleDeCaixa: React.FC<CaixaProps> = ({ onCaixaFechado }) => {
     };
 
     fetchData();
-  }, [user]);
+	return () => {
+		unsubscribePdv();
+	}
+  }, [user, totalEntrada, totalSaida, totalCompra]);
+
+  useEffect(() => {
+    calculateSaldoFinal();
+  }, [totalEntrada, totalSaida, totalCompra]);
 
   const handleAbrirCaixa = async (valorInicial: number) => {
     setError(null);
@@ -367,7 +394,15 @@ const ControleDeCaixa: React.FC<CaixaProps> = ({ onCaixaFechado }) => {
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">
-        <FinancialControlNew setCaixaAberto={setCaixaAberto} caixaAberto={caixaAberto} valorInicial={caixaDataPersistida?.valorInicial || 0}/>
+        <FinancialControlNew
+          setCaixaAberto={setCaixaAberto}
+          caixaAberto={caixaAberto}
+          valorInicial={caixaDataPersistida?.valorInicial || 0}
+          totalEntrada={totalEntrada}
+          totalSaida={totalSaida}
+          totalCompra={totalCompra}
+          saldoFinal={saldoFinal}
+        />
         {user && caixaAberto && caixaDataPersistida ? (
           <div>
             <h2>Caixa Aberto</h2>

@@ -15,6 +15,7 @@ import { db } from "../lib/firebase";
 import { menuItems } from "@/data/menuItems";
 import FinancialControlNew from './FinancialControlNew';
 import OrderTotal from './OrderTotal';
+import { useCaixa } from '../context/CaixaContext';
 
 interface OpenTable {
   id: string;
