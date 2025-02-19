@@ -163,11 +163,8 @@ const PDVPanel = () => {
               price: item.price,
               quantity: item.quantity,
             });
+            calculatedTotal += item.price * item.quantity; // Calculate total from items
           });
-        }
-        if (data?.total) {
-          console.log("Document total:", data.total);
-          calculatedTotal += data.total;
         }
       });
 

@@ -181,6 +181,16 @@ const ControleDeCaixa: React.FC<CaixaProps> = ({ onCaixaFechado }) => {
           transactions: [],
         });
         console.log("Informações gravadas na coleção /aberturadecaixa com ID:", docId);
+
+        // Adicionar transação à coleção ControleFinanceiro
+        const controleFinanceiroCollection = collection(db, 'ControleFinanceiro');
+        await addDoc(controleFinanceiroCollection, {
+          tipo: 'inicio',
+          valor: valorInicial,
+          descricao: 'Abertura de caixa',
+          data: dataAbertura,
+        });
+        console.log("Transação de abertura de caixa gravada na coleção /ControleFinanceiro com ID:", docId);
       }
 
 
@@ -357,7 +367,7 @@ const ControleDeCaixa: React.FC<CaixaProps> = ({ onCaixaFechado }) => {
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">
-        <FinancialControlNew setCaixaAberto={setCaixaAberto} caixaAberto={caixaAberto} />
+        <FinancialControlNew setCaixaAberto={setCaixaAberto} caixaAberto={caixaAberto} valorInicial={caixaDataPersistida?.valorInicial || 0}/>
         {user && caixaAberto && caixaDataPersistida ? (
           <div>
             <h2>Caixa Aberto</h2>

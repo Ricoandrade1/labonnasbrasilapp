@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { format } from 'date-fns';
 import { db } from "../lib/firebase";
-import { collection, addDoc, onSnapshot } from "firebase/firestore";
+import { collection, addDoc, onSnapshot, getDocs, query, where, Timestamp } from "firebase/firestore";
 
 interface Transaction {
   id: string;
@@ -18,9 +18,10 @@ interface Transaction {
 interface FinancialControlNewProps {
   setCaixaAberto: (aberto: boolean) => void;
   caixaAberto: boolean;
+  valorInicial: number;
 }
 
-const FinancialControlNew: React.FC<FinancialControlNewProps> = ({ setCaixaAberto, caixaAberto }) => {
+const FinancialControlNew: React.FC<FinancialControlNewProps> = ({ setCaixaAberto, caixaAberto, valorInicial }) => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [type, setType] = useState<Transaction['type']>('entrada');
   const [amount, setAmount] = useState<number>(0);
@@ -32,14 +33,8 @@ const FinancialControlNew: React.FC<FinancialControlNewProps> = ({ setCaixaAbert
   const [totalCompra, setTotalCompra] = useState(0);
   const [saldoFinal, setSaldoFinal] = useState(0);
 
- useEffect(() => {
-    if (!caixaAberto) {
-      setTotalEntrada(0);
-      setTotalSaida(0);
-      setTotalCompra(0);
-      setSaldoFinal(0);
-    }
-    const fetchTransactions = async () => {
+  useEffect(() => {
+    const fetchFinancialData = async () => {
       if (!db) {
         console.error("Firebase não inicializado!");
         return;
@@ -48,6 +43,21 @@ const FinancialControlNew: React.FC<FinancialControlNewProps> = ({ setCaixaAbert
       try {
         const controleFinanceiroCollection = collection(db, 'ControleFinanceiro');
 
+        // Fetch initial transactions
+        const querySnapshot = await getDocs(controleFinanceiroCollection);
+        const initialTransactions = querySnapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            type: data.tipo || 'entrada',
+            amount: data.valor || 0,
+            description: data.descricao || '',
+            date: data.data ? new Date(data.data).toISOString() : new Date().toISOString(),
+          } as Transaction;
+        });
+        setTransactions(initialTransactions);
+
+        // Set up real-time updates
         const unsubscribeControleFinanceiro = onSnapshot(controleFinanceiroCollection, (snapshot) => {
           const controleFinanceiroList = snapshot.docs.map(doc => {
             const data = doc.data();
@@ -56,7 +66,7 @@ const FinancialControlNew: React.FC<FinancialControlNewProps> = ({ setCaixaAbert
               type: data.tipo || 'entrada',
               amount: data.valor || 0,
               description: data.descricao || '',
-              date: data.data ? new Date(data.data).toISOString() : new Date().toISOString(),
+              date: data.data && typeof data.data === 'string' && !isNaN(new Date(data.data).getTime()) ? format(new Date(data.data), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
             } as Transaction;
           });
 
@@ -71,22 +81,24 @@ const FinancialControlNew: React.FC<FinancialControlNewProps> = ({ setCaixaAbert
       }
     };
 
-    fetchTransactions();
-  }, []);
+    fetchFinancialData();
+  }, [caixaAberto]);
 
   useEffect(() => {
-    const calculateTotals = () => {
-      const entrada = transactions
-        .filter((transaction) => transaction.type === 'entrada')
-        .reduce((sum, transaction) => sum + transaction.amount, 0);
+    const calculateTotals = async () => {
+      let entrada = valorInicial || 0;
+      let saida = 0;
+      let compra = 0;
 
-      const saida = transactions
-        .filter((transaction) => transaction.type === 'saida')
-        .reduce((sum, transaction) => sum + transaction.amount, 0);
-
-      const compra = transactions
-        .filter((transaction) => transaction.type === 'compra')
-        .reduce((sum, transaction) => sum + transaction.amount, 0);
+      transactions.forEach((transaction) => {
+        if (transaction.type === 'entrada') {
+          entrada += transaction.amount;
+        } else if (transaction.type === 'saida') {
+          saida += transaction.amount;
+        } else if (transaction.type === 'compra') {
+          compra += transaction.amount;
+        }
+      });
 
       setTotalEntrada(entrada);
       setTotalSaida(saida);
@@ -95,7 +107,7 @@ const FinancialControlNew: React.FC<FinancialControlNewProps> = ({ setCaixaAbert
     };
 
     calculateTotals();
-  }, [transactions]);
+  }, [transactions, valorInicial]);
 
  const handleAddTransaction = async () => {
     if (!db) {
@@ -114,21 +126,13 @@ const FinancialControlNew: React.FC<FinancialControlNewProps> = ({ setCaixaAbert
     try {
       const transactionsCollection = collection(db, 'ControleFinanceiro');
       await addDoc(transactionsCollection, {
-        amount: amount,
-        date: new Date().toISOString(),
-        description: description,
-        type: type,
+        valor: amount,
+        data: new Date().toISOString(),
+        descricao: description,
+        tipo: type,
       });
       setAmount(0);
       setDescription('');
-      if (type === 'entrada') {
-        setTotalEntrada(prevTotalEntrada => prevTotalEntrada + amount);
-      } else if (type === 'saida') {
-        setTotalSaida(prevTotalSaida => prevTotalSaida + amount);
-      } else if (type === 'compra') {
-        setTotalCompra(prevTotalCompra => prevTotalCompra + amount);
-      }
-      setSaldoFinal(prevSaldoFinal => prevSaldoFinal + totalEntrada - totalSaida - totalCompra);
     } catch (error) {
       console.error("Erro ao adicionar transação:", error);
     }

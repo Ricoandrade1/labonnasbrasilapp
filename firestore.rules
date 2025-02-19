@@ -46,6 +46,11 @@ service cloud.firestore {
       allow create: if isAuthenticated() && isCaixa(request.auth.uid)  && getRole(request.auth.uid) == 'caixa';
     }
 
+    match /controlefinanceiro/{documentId} {
+      allow create: if isAuthenticated();
+      allow read, update, delete: if false;
+    }
+
     // Gerente: Acesso total ao sistema e visualização de todas as operações
     match /{document=**} {
       allow read, write: if true;

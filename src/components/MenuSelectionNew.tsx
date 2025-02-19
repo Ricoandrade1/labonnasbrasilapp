@@ -12,7 +12,7 @@ import { OrderManagerProvider } from "./OrderManager";
 import useOrderManager from "./OrderManager";
 import { useTable } from '../context/TableContext'; // Corrected import path
 import { useAuth } from '../context/AuthContext'; // Corrected import path
-import { addOrderToFirebase, updateTableStatusInFirebase, getFirebaseOrderHistory } from "@/lib/api";
+import { addOrderToFirebase, updateTableStatusInFirebase, getFirebaseOrderHistory, closeTableAndRegisterPayment } from "@/lib/api";
 import OrderHistory from "./menu/OrderHistory";
 
 const MenuSelectionNew = () => {
@@ -23,6 +23,12 @@ const MenuSelectionNew = () => {
   const { getTableOrders, updateOrderStatus, clearTable, tables: tableContextTables, setTables } = useTable(); // Added clearTable and tables from context
   const [orderHistory, setOrderHistory] = useState<TableOrder[]>([]);
   const { user } = useAuth(); // Get auth context and user
+
+  const handleCloseTable = async () => {
+    const tableId = tableParam || "1";
+    const totalAmount = getTotalPrice();
+    await closeTableAndRegisterPayment(tableId, totalAmount);
+  };
 
   const handleResponsibleNameChange = (value: string) => {
     console.log("responsibleName changed to:", value);
@@ -171,10 +177,11 @@ const MenuSelectionNew = () => {
               tableParam={tableParam}
             />
             <OrderHistory orders={orderHistory} />
+            <Button onClick={() => handleCloseTable()} className="w-full">Fechar Mesa</Button>
           </div>
         </div>
       </div>
-    </div >
+    </div>
   );
 };
 

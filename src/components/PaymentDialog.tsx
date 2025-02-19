@@ -83,32 +83,38 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({ paymentMethod, total, ope
                   return;
                 }
 
-                // 1. Limpar a mesa
-                await clearTable(mesaId);
-
-                // 2. Salvar o fechamento da mesa no Firebase
+                // 1. Salvar o fechamento da mesa no Firebase
                 console.log("Salvando fechamento da mesa no Firebase (Caixa)...");
                 const tableDoc = await getDoc(doc(db, "Mesas", tableId));
                 if (tableDoc.exists() && tableDoc.data().status === "occupied") {
-                  await addDoc(collection(db, "Caixa"), {
+                  await addDoc(collection(db, "pdv"), {
                     tableId: tableId,
                     paymentMethod: paymentMethod,
                     total: total,
                     timestamp: new Date().toISOString(),
+                    categoria: "mesa",
+                    data: new Date().toISOString(),
+                    descricao: `Mesa ${tableId}`,
+                    tipo: "entrada",
+                    usuario: user.name,
+                    valor: total,
                   });
-                  console.log("Fechamento da mesa salvo com sucesso no Firebase (Caixa).");
+                  console.log("Dados salvos com sucesso na coleção /pdv.");
                 } else {
                   console.log("Mesa não está aberta. Transação não registrada no controle de caixa.");
                 }
 
-                // 2.1. Salvar a entrada no controle financeiro
-                console.log("Salvando entrada no controle financeiro (ControleFinanceiro)...");
-                console.log("Valor total:", total);
+                // 2. Limpar a mesa
+                await clearTable(mesaId);
 
-                // Verificar se a mesa está aberta
+                 // Verificar se a mesa está aberta
                 try {
                   const tableDoc = await getDoc(doc(db, "Mesas", tableId));
                   if (tableDoc.exists() && tableDoc.data().status === "occupied") {
+
+                    // 2.1. Salvar a entrada no controle financeiro
+                    console.log("Salvando entrada no controle financeiro (ControleFinanceiro)...");
+                    console.log("Valor total:", total);
                     try {
                       await addDoc(collection(db, "ControleFinanceiro"), {
                         categoria: "mesa",
@@ -123,7 +129,7 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({ paymentMethod, total, ope
                       console.error("Erro ao salvar entrada no controle financeiro:", error);
                     }
                   } else {
-                    console.log("Mesa não está aberta. Transação não registrada no controle financeiro.");
+                    console.log("Mesa não está aberta. Transação não registrada no controle de caixa.");
                     // TODO: Exibir mensagem de erro para o usuário
                   }
                 } catch (error) {
@@ -131,8 +137,7 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({ paymentMethod, total, ope
                   // TODO: Exibir mensagem de erro para o usuário
                 }
 
-                // 3. Chamar a função onConfirm para fechar o diálogo
-                onConfirm();
+                // 3. Chamar a função onConfirm();
               } catch (error) {
                 console.error("Erro ao finalizar o pagamento:", error);
                 // TODO: Exibir uma mensagem de erro para o usuário
