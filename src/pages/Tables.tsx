@@ -56,6 +56,12 @@ const Tables = () => {
     }
   }, [isAuthenticated, navigate]);
 
+  useEffect(() => {
+    if (caixaAberto !== undefined) {
+      forceUpdateTables();
+    }
+  }, [caixaAberto, forceUpdateTables]);
+
   const fetchTables = async () => {
     try {
       const querySnapshot = await getDocs(collection(db, "Mesas"));
@@ -288,11 +294,6 @@ const Tables = () => {
           </div>
         </div>
       )
-      /* <div className="flex justify-center space-x-4">
-        <Button onClick={() => setAllTablesAvailable()}>Set All Tables Available</Button>
-        <Button onClick={() => { localStorage.clear(); window.location.reload(); }}>Limpar Dados Locais</Button>
-        <Button onClick={() => forceUpdateTables()}>Atualizar Mesas</Button>
-      </div> */
       {caixaAberto === false && <CaixaFechadoAviso />}
     </div>
   );

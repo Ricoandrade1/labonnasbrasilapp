@@ -19,10 +19,10 @@ import {
   createUniqueTables,
   addTableWithId,
 } from "./firebase";
+import { getDoc, setDoc, query, where, orderBy, limit } from "firebase/firestore";
 import { TableOrder, OrderItem } from "../types";
 import { User } from "@/context/AuthContext";
 import { TableStatus } from "@/context/TableContext";
-import { query, where, orderBy, limit } from "firebase/firestore";
 
 export { query, where, orderBy, limit };
 
@@ -121,5 +121,7 @@ export {
   addOrderToFirebase,
   updateTableStatus as updateOrderStatus,
   updateTableStatusInFirebase,
-  getFirebaseOrderHistory
+  getFirebaseOrderHistory,
+  getDoc,
+  setDoc
 };
