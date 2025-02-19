@@ -39,15 +39,15 @@ const SidebarMenu = () => {
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button 
-          variant="outline" 
-          size="icon" 
-          className="fixed top-4 left-4 z-50 bg-white shadow-md hover:bg-gray-100"
+        <Button
+          variant="outline"
+          size="icon"
+          className="fixed top-4 left-4 z-[1001] bg-white shadow-md hover:bg-gray-100"
         >
           <Menu className="h-[1.2rem] w-[1.2rem]" />
         </Button>
       </SheetTrigger>
-      <SheetContent side="left" className="w-[280px] bg-white p-0">
+      <SheetContent side="left" className="w-[280px] bg-white p-0 z-[1001]">
         <SheetHeader className="p-6 border-b">
           <SheetTitle className="text-2xl font-bold text-[#518426]">
             Labonnas

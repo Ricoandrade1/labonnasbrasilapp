@@ -20,12 +20,14 @@ const CaixaFechadoAviso = () => {
     }}>
       <div style={{
         backgroundColor: 'rgba(255, 0, 0, 0.8)',
-        padding: '20px',
+        padding: '10px',
         borderRadius: '10px',
-        maxWidth: '800px',
+        maxWidth: '90%',
         margin: '0 auto',
         pointerEvents: 'auto',
-      }}>
+        fontSize: '1em',
+      }}
+      >
         <p>🔔 ATENÇÃO! O CAIXA AINDA NÃO FOI ABERTO 🔔</p>
         <p>💰 Para iniciar o atendimento, peça ao caixa ou ao gerente para abrir o caixa e informar o valor inicial de operação.</p>
         <p>⚠️ IMPORTANTE:</p>
