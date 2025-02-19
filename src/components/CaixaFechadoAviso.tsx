@@ -1,6 +1,10 @@
 import React from 'react';
 
-const CaixaFechadoAviso = () => {
+interface CaixaFechadoAvisoProps {
+  children?: React.ReactNode;
+}
+
+const CaixaFechadoAviso: React.FC<CaixaFechadoAvisoProps> = ({ children }) => {
   return (
     <div style={{
       position: 'fixed',
@@ -14,7 +18,7 @@ const CaixaFechadoAviso = () => {
       alignItems: 'center',
       zIndex: 1000,
       color: 'white',
-      fontSize: '1.5em',
+      fontSize: '1.2em',
       textAlign: 'center',
       pointerEvents: 'none',
     }}>
@@ -25,7 +29,11 @@ const CaixaFechadoAviso = () => {
         maxWidth: '90%',
         margin: '0 auto',
         pointerEvents: 'auto',
-        fontSize: '1em',
+        fontSize: '0.9em',
+        position: 'relative',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
       }}
       >
         <p>🔔 ATENÇÃO! O CAIXA AINDA NÃO FOI ABERTO 🔔</p>
@@ -35,6 +43,7 @@ const CaixaFechadoAviso = () => {
         <p>🚫 Nenhuma comanda pode ser cancelada sem a validação dos administradores.</p>
         <p>💳 Caso haja qualquer divergência financeira, os responsáveis serão notificados e deverão prestar esclarecimentos.</p>
         <p>Aguarde a liberação do sistema para continuar os atendimentos.</p>
+        {children}
       </div>
     </div>
   );

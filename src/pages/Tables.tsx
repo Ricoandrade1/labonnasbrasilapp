@@ -178,14 +178,14 @@ const Tables = () => {
               )}
             </div>
             <Button
-              variant="outline"
+              variant="default"
               size="sm"
               onClick={() => {
                 console.log("onClick - Botão Sair clicado");
                 logout();
                 navigate("/login");
               }}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 text-white"
             >
               <LogOut className="h-4 w-4" />
               Sair
@@ -294,7 +294,25 @@ const Tables = () => {
           </div>
         </div>
       )
-      {caixaAberto === false && <CaixaFechadoAviso />}
+      {caixaAberto === false && (
+        <CaixaFechadoAviso>
+          <div className="flex flex-col items-center justify-center">
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => {
+                console.log("onClick - Botão Sair clicado");
+                logout();
+                navigate("/login");
+              }}
+              className="flex items-center gap-2 text-white bg-green-500 hover:bg-green-700 mt-4"
+            >
+              <LogOut className="h-4 w-4" />
+              Sair
+            </Button>
+          </div>
+        </CaixaFechadoAviso>
+      )}
     </div>
   );
 };
