@@ -177,7 +177,6 @@ const MenuSelectionNew = () => {
               tableParam={tableParam}
             />
             <OrderHistory orders={orderHistory} />
-            <Button onClick={() => handleCloseTable()} className="w-full">Fechar Mesa</Button>
           </div>
         </div>
       </div>
