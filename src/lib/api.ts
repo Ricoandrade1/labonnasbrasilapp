@@ -22,9 +22,9 @@ import {
 import { TableOrder, OrderItem } from "../types";
 import { User } from "@/context/AuthContext";
 import { TableStatus } from "@/context/TableContext";
-import { query, where, orderBy } from "firebase/firestore";
+import { query, where, orderBy, limit } from "firebase/firestore";
 
-export { query, where };
+export { query, where, orderBy, limit };
 
 const addOrderToFirebase = async (tableId: string, order: TableOrder, user: User | null, paymentMethod: string) => {
   try {

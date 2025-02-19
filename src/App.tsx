@@ -14,6 +14,7 @@ import SidebarMenu from "@/components/SidebarMenu";
 import Test from "@/pages/Test";
 import Cashier from "@/pages/Cashier";
 import MenuSelectionCaixa from "@/pages/MenuSelectionCaixa";
+import { CaixaProvider } from "@/context/CaixaContext";
 import { TableProvider } from "@/context/TableContext";
 import ResetTables from "./components/ResetTables";
 import { createUniqueTables } from './lib/firebase';
@@ -24,14 +25,14 @@ interface PrivateRouteProps {
   children: React.ReactNode;
 }
 
-const PrivateRoute = React.memo(({ children }: PrivateRouteProps) => {
+const PrivateRoute = ({ children }: PrivateRouteProps) => {
   const { isAuthenticated } = useAuth();
-  console.log("isAuthenticated:", isAuthenticated);
+  console.log("PrivateRoute - isAuthenticated:", isAuthenticated);
   if (!isAuthenticated) {
     return <div>Não autenticado</div>;
   }
   return children;
-});
+};
 
 function App() {
   useEffect(() => {
@@ -40,65 +41,67 @@ function App() {
 
   return (
     <AuthProvider>
-      <Router>
-        <TableProvider>
-          <SidebarMenu />
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route
-              path="/tables"
-              element={
-                <PrivateRoute>
-                  <Tables />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/menu"
-              element={
-                <PrivateRoute>
-                  <MenuSelection />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/cashier"
-              element={
-                <PrivateRoute>
-                  <Cashier />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/gerente"
-              element={
-                <PrivateRoute>
-                  <div>Página do Gerente</div>
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/adm"
-              element={
-                <PrivateRoute>
-                  <div>Página do Administrador</div>
-                </PrivateRoute>
-              }
-            />
-            <Route path="/test" element={<PrivateRoute><Test /></PrivateRoute>} />
-            <Route
-              path="/reset"
-              element={
-                <PrivateRoute>
-                  <ResetTables />
-                </PrivateRoute>
-              }
-            />
-            <Route path="/" element={<Navigate to="/login" />} />
-          </Routes>
-          <Toaster />
-        </TableProvider>
-      </Router>
+      <CaixaProvider>
+        <Router>
+          <TableProvider>
+            <SidebarMenu />
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route
+                path="/tables"
+                element={
+                  <PrivateRoute>
+                    <Tables />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/menu"
+                element={
+                  <PrivateRoute>
+                    <MenuSelection />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/cashier"
+                element={
+                  <PrivateRoute>
+                    <Cashier />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/gerente"
+                element={
+                  <PrivateRoute>
+                    <div>Página do Gerente</div>
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/adm"
+                element={
+                  <PrivateRoute>
+                    <div>Página do Administrador</div>
+                  </PrivateRoute>
+                }
+              />
+              <Route path="/test" element={<PrivateRoute><Test /></PrivateRoute>} />
+              <Route
+                path="/reset"
+                element={
+                  <PrivateRoute>
+                    <ResetTables />
+                  </PrivateRoute>
+                }
+              />
+              <Route path="/" element={<Navigate to="/login" />} />
+            </Routes>
+            <Toaster />
+          </TableProvider>
+        </Router>
+      </CaixaProvider>
     </AuthProvider>
   );
 }

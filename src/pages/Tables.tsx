@@ -1,13 +1,14 @@
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { Button } from "../components/ui/button";
-import { Card } from "../components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { LogOut, Users, Clock, Coffee } from "lucide-react";
 import { useTable } from "@/context/TableContext";
 import { useEffect, useState } from "react";
 import { TableStatus } from "@/context/TableContext";
-import { db, collection, getDocs, getFirebaseOrderHistory, query, where } from "@/lib/api";
-import { CardContent } from "@/components/ui/card";
+import { db, collection, getDocs, getFirebaseOrderHistory, query, where, orderBy, limit } from "@/lib/api";
+import { useCaixa } from "@/context/CaixaContext";
+import CaixaFechadoAviso from "@/components/CaixaFechadoAviso";
 
 interface Table {
   id: string | number;
@@ -17,30 +18,6 @@ interface Table {
   totalAmount: number;
   openingTime?: string;
 }
-
-const AlertMessage = () => (
-  <div className="fixed top-0 left-0 w-full h-full flex items-center justify-center bg-gray-500 bg-opacity-50 z-50">
-    <Card className="w-full max-w-md">
-      <CardContent className="bg-red-100 border border-red-500 text-red-700 p-4 rounded-md">
-        <div className="flex items-center space-x-2">
-          <span className="font-bold">🔔 ATENÇÃO! O CAIXA AINDA NÃO FOI ABERTO 🔔</span>
-        </div>
-        <p className="mt-2">
-          💰 Para iniciar o atendimento, peça ao caixa ou ao gerente para abrir o caixa e informar o valor inicial de operação.
-        </p>
-        <div className="mt-4">
-          <p>⚠️ IMPORTANTE:</p>
-          <ul className="list-disc pl-5">
-            <li>✅ Todos os registros devem ser feitos com máxima atenção.</li>
-            <li>🚫 Nenhuma comanda pode ser cancelada sem a validação dos administradores.</li>
-            <li>💳 Caso haja qualquer divergência financeira, os responsáveis serão notificados e deverão prestar esclarecimentos.</li>
-          </ul>
-        </div>
-        <p className="mt-4">Aguarde a liberação do sistema para continuar os atendimentos.</p>
-      </CardContent>
-    </Card>
-  </div>
-);
 
 const calculateAverageTime = (tables: Table[]): string => {
   const occupiedTables = tables.filter(t => t.status === "occupied");
@@ -64,54 +41,20 @@ const calculateAverageTime = (tables: Table[]): string => {
 };
 
 const Tables = () => {
+  console.log("Tables.tsx - Componente Tables renderizado");
   const navigate = useNavigate();
   const { user, logout, isAuthenticated } = useAuth();
   const tableContext = useTable();
   const { tables, setAllTablesAvailable, forceUpdateTables, setTables } = tableContext;
   const [loading, setLoading] = useState(true);
   const [activeOrders, setActiveOrders] = useState<any[]>([]);
-  const [caixaAberto, setCaixaAberto] = useState(false);
+  const { caixaAberto } = useCaixa(); // Obtém o estado do caixa do contexto
 
   useEffect(() => {
     if (!isAuthenticated) {
       navigate("/login");
     }
   }, [isAuthenticated, navigate]);
-
-  useEffect(() => {
-   const verificarCaixaAberto = async () => {
-      try {
-        const dataAtual = new Date().toLocaleDateString();
-        const fechamentodecaixaCollection = collection(db, 'fechamentodecaixa');
-        const qFechado = query(
-          fechamentodecaixaCollection,
-          where('usuarioAbertura', '==', user.id),
-          where('dataAbertura', '==', dataAtual)
-        );
-        const querySnapshotFechado = await getDocs(qFechado);
-
-        if (!querySnapshotFechado.empty) {
-          // Caixa fechado
-          setCaixaAberto(false);
-          console.log("Caixa já foi fechado (Firebase)");
-        } else {
-          // Caixa aberto ou não encontrado
-          const aberturadecaixaCollection = collection(db, 'aberturadecaixa');
-          const qAberto = query(
-            aberturadecaixaCollection,
-            where('status', '==', 'aberto')
-          );
-          const querySnapshotAberto = await getDocs(qAberto);
-          setCaixaAberto(!querySnapshotAberto.empty);
-        }
-      } catch (error) {
-        console.error("Erro ao verificar status do caixa:", error);
-        setCaixaAberto(true);
-      }
-    };
-
-    verificarCaixaAberto();
-  }, []);
 
   const fetchTables = async () => {
     try {
@@ -122,42 +65,42 @@ const Tables = () => {
       setActiveOrders(activeOrdersData);
 
       const tablesData = await Promise.all(querySnapshot.docs.map(async doc => {
-const data = doc.data() as any;
-          const tableData: Table = {
-            id: doc.id,
-            tableNumber: data.tableNumber || '',
-            status: data.status || 'available' as TableStatus,
-            totalAmount: data.totalAmount || 0,
-            openingTime: data.openingTime || null,
-            orders: [],
-          };
-          const orderHistory = await getFirebaseOrderHistory(doc.id);
-          tableData.orders = orderHistory;
-          
-          return tableData;
-        }));
+        const data = doc.data() as any;
+        const tableData: Table = {
+          id: doc.id,
+          tableNumber: data.tableNumber || '',
+          status: data.status || 'available' as TableStatus,
+          totalAmount: data.totalAmount || 0,
+          openingTime: data.openingTime || null,
+          orders: [],
+        };
+        const orderHistory = await getFirebaseOrderHistory(doc.id);
+        tableData.orders = orderHistory;
 
-        // Verificar e corrigir números de mesa duplicados
-        const tableNumbers = new Set();
-        tablesData.forEach((table, index) => {
-          if (tableNumbers.has(table.tableNumber)) {
-            table.tableNumber = `${table.tableNumber} (${index + 1})`;
-          } else {
-            tableNumbers.add(table.tableNumber);
-          }
-        });
+        return tableData;
+      }));
 
-        console.log("Tables.tsx - Fetched tables:", tablesData);
-        console.log("Tables.tsx - Fetched tables length:", tablesData.length);
-        setTables((prevTables) => tablesData);
-      } catch (error) {
-        console.error("Tables.tsx - Error fetching tables:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+      // Verificar e corrigir números de mesa duplicados
+      const tableNumbers = new Set();
+      tablesData.forEach((table, index) => {
+        if (tableNumbers.has(table.tableNumber)) {
+          table.tableNumber = `${table.tableNumber} (${index + 1})`;
+        } else {
+          tableNumbers.add(table.tableNumber);
+        }
+      });
 
- useEffect(() => {
+      console.log("Tables.tsx - Fetched tables:", tablesData);
+      console.log("Tables.tsx - Fetched tables length:", tablesData.length);
+      setTables((prevTables) => tablesData);
+    } catch (error) {
+      console.error("Tables.tsx - Error fetching tables:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     console.log("Tables.tsx - useEffect triggered");
     console.log("Tables.tsx - user:", user);
     fetchTables();
@@ -209,6 +152,7 @@ const data = doc.data() as any;
   };
 
   console.log("Tables.tsx - user?.role:", user?.role);
+  console.log("Tables.tsx - Componente Tables - antes do return");
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -245,14 +189,9 @@ const data = doc.data() as any;
       </div>
 
       {/* Alert Message */}
-      {caixaAberto ? null : (
-        <div className="fixed top-0 left-0 w-full h-full flex items-center justify-center bg-gray-500 bg-opacity-50 z-40">
-          <AlertMessage />
-        </div>
-      )}
 
       {/* Stats Overview */}
-      <div className={`pt-24 pb-6 px-6 ${caixaAberto ? '' : 'pointer-events-none opacity-50'}`}>
+      <div className={`pt-24 pb-6 px-6`}>
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card className="p-4 flex items-center gap-4">
             <div className="p-3 bg-emerald-100 rounded-full">
@@ -297,7 +236,7 @@ const data = doc.data() as any;
       </div>
 
       {/* Tables Grid */}
-      {caixaAberto && (
+      
         <div className={`px-6 pb-6`}>
           <div className="max-w-7xl mx-auto">
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
@@ -316,8 +255,8 @@ const data = doc.data() as any;
                     return (
                       <button
                         key={table.id}
-                        onClick={() => handleTableClick(String(table.id))}
-                        className={`relative group p-4 rounded-lg border transition-all duration-200 ${status.color} ${status.borderColor} hover:shadow-md ${table.status === "occupied" ? "bg-rose-100 border-rose-200" : ""}`}
+                        onClick={caixaAberto ? () => handleTableClick(String(table.tableNumber)) : undefined}
+                        className={`relative group p-4 rounded-lg border transition-all duration-200 ${status.color} ${status.borderColor} hover:shadow-md ${table.status === "occupied" ? "bg-rose-100 border-rose-200" : ""} ${!caixaAberto ? "cursor-not-allowed opacity-50" : ""}`}
                       >
                         <div className="flex flex-col items-center gap-2">
                           <span className={`text-lg font-semibold ${status.textColor}`}>
@@ -354,6 +293,7 @@ const data = doc.data() as any;
         <Button onClick={() => { localStorage.clear(); window.location.reload(); }}>Limpar Dados Locais</Button>
         <Button onClick={() => forceUpdateTables()}>Atualizar Mesas</Button>
       </div> */}
+      {caixaAberto === false && <CaixaFechadoAviso />}
     </div>
   );
 };

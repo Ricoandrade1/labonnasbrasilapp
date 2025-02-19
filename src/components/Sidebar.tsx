@@ -8,7 +8,7 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
   return (
-    <div className={`fixed inset-0 z-50 transform ${isOpen ? "translate-x-0" : "-translate-x-full"} transition-transform duration-300 ease-in-out bg-gray-800 text-white lg:relative lg:translate-x-0 lg:w-64`}>
+    <div className={`fixed inset-0 z-[1001] transform ${isOpen ? "translate-x-0" : "-translate-x-full"} transition-transform duration-300 ease-in-out bg-gray-800 text-white lg:relative lg:translate-x-0 lg:w-64`}>
       <div className="p-4 text-2xl font-bold">Menu</div>
       <nav className="flex flex-col p-4">
         <Link to="/" className="mb-2 p-2 hover:bg-gray-700 rounded" onClick={toggleSidebar}>
