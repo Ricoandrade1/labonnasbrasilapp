@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { format } from 'date-fns';
 import { db } from "../lib/firebase";
 import { collection, addDoc, onSnapshot, getDocs, query, where, Timestamp } from "firebase/firestore";
+import { useCaixa } from '../context/CaixaContext';
 
 interface Transaction {
   id: string;
@@ -16,16 +17,18 @@ interface Transaction {
 }
 
 interface FinancialControlNewProps {
-  setCaixaAberto: (aberto: boolean) => void;
   caixaAberto: boolean;
   valorInicial: number;
   totalEntrada: number;
   totalSaida: number;
   totalCompra: number;
   saldoFinal: number;
+  setCaixaAberto: (caixaAberto: boolean) => void;
 }
 
 const FinancialControlNew: React.FC<FinancialControlNewProps> = ({ setCaixaAberto, caixaAberto, valorInicial, totalEntrada, totalSaida, totalCompra, saldoFinal }) => {
+  const { setTotalEntrada, setTotalSaida, setTotalCompra, setSaldoFinal } = useCaixa();
+
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [type, setType] = useState<Transaction['type']>('entrada');
   const [amount, setAmount] = useState<number>(0);
@@ -52,7 +55,7 @@ const FinancialControlNew: React.FC<FinancialControlNewProps> = ({ setCaixaAbert
             type: data.tipo || 'entrada',
             amount: data.valor || 0,
             description: data.descricao || '',
-            date: data.data ? new Date(data.data).toISOString() : new Date().toISOString(),
+            date: data.data ? (typeof data.data === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d*)?Z$/.test(data.data) ? new Date(data.data).toISOString() : new Date().toISOString()) : new Date().toISOString(),
           } as Transaction;
         });
         setTransactions(initialTransactions);
@@ -61,12 +64,27 @@ const FinancialControlNew: React.FC<FinancialControlNewProps> = ({ setCaixaAbert
         const unsubscribeControleFinanceiro = onSnapshot(controleFinanceiroCollection, (snapshot) => {
           const controleFinanceiroList = snapshot.docs.map(doc => {
             const data = doc.data();
+            let date = new Date().toISOString();
+            if (data.data) {
+              console.log("Data encontrada:", data.data);
+              let parsedDate;
+              try {
+                parsedDate = new Date(data.data);
+                if (parsedDate instanceof Date && !isNaN(parsedDate.getTime())) {
+                  date = parsedDate.toISOString();
+                } else {
+                  console.warn("Data inválida encontrada:", data.data);
+                }
+              } catch (e) {
+                console.error("Erro ao analisar a data:", data.data, e);
+              }
+            }
             return {
               id: doc.id,
               type: data.tipo || 'entrada',
               amount: data.valor || 0,
               description: data.descricao || '',
-              date: data.data && typeof data.data === 'string' && !isNaN(new Date(data.data).getTime()) ? format(new Date(data.data), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
+              date: date,
             } as Transaction;
           });
 
@@ -85,7 +103,7 @@ const FinancialControlNew: React.FC<FinancialControlNewProps> = ({ setCaixaAbert
   }, [caixaAberto]);
 
   useEffect(() => {
-    const calculateTotals = async () => {
+    const calculateTotals = () => {
       let entrada = valorInicial || 0;
       let saida = 0;
       let compra = 0;

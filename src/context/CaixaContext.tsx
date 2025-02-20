@@ -5,6 +5,10 @@ interface CaixaContextProps {
   caixaAberto: boolean;
   setCaixaAberto: (aberto: boolean) => void;
   totalCaixa: number;
+  setTotalEntrada: (totalEntrada: number) => void;
+  setTotalSaida: (totalSaida: number) => void;
+  setTotalCompra: (totalCompra: number) => void;
+  setSaldoFinal: (saldoFinal: number) => void;
 }
 
 const CaixaContext = createContext<CaixaContextProps | undefined>(undefined);
@@ -18,6 +22,10 @@ export const CaixaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   });
 
   const [totalCaixa, setTotalCaixa] = useState(0);
+  const [totalEntrada, setTotalEntrada] = useState<number>(0);
+  const [totalSaida, setTotalSaida] = useState<number>(0);
+  const [totalCompra, setTotalCompra] = useState<number>(0);
+  const [saldoFinal, setSaldoFinal] = useState<number>(0);
 
   const fetchTotalPdv = async () => {
     try {
@@ -74,7 +82,7 @@ export const CaixaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [caixaAberto]);
 
   return (
-    <CaixaContext.Provider value={{ caixaAberto, setCaixaAberto, totalCaixa }}>
+    <CaixaContext.Provider value={{ caixaAberto, setCaixaAberto, totalCaixa, setTotalEntrada, setTotalSaida, setTotalCompra, setSaldoFinal }}>
       {children}
     </CaixaContext.Provider>
   );

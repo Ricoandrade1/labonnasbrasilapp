@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../lib/firebase';
-import { collection, addDoc, getDocs, query, where, doc, updateDoc, setDoc, getDoc, orderBy, limit, onSnapshot } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, where, doc, updateDoc, setDoc, getDoc, orderBy, limit, onSnapshot, deleteDoc, writeBatch } from 'firebase/firestore';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -48,12 +48,16 @@ const ControleDeCaixa: React.FC<CaixaProps> = ({ onCaixaFechado }) => {
 
  const fetchTotalPdv = () => {
     try {
-      const pdvCollection = collection(db, "pdv");
+      const pdvCollection = collection(db, "pdvzero");
       const unsubscribe = onSnapshot(pdvCollection, (snapshot) => {
         let total = 0;
         snapshot.docs.forEach((doc) => {
           const data = doc.data();
-          total += data.total || 0;
+		  if (data.tipo === 'abertura') {
+			total += data.valor || 0;
+		  } else {
+          	total += data.total || 0;
+		  }
         });
         setTotalEntrada(total);
 		calculateSaldoFinal();
@@ -61,6 +65,38 @@ const ControleDeCaixa: React.FC<CaixaProps> = ({ onCaixaFechado }) => {
       return unsubscribe;
     } catch (error) {
       console.error("Erro ao buscar os valores do PDV:", error);
+    }
+  };
+
+  const clearPdvZeroCollection = async () => {
+    try {
+      const pdvZeroCollection = collection(db, "pdvzero");
+      const querySnapshot = await getDocs(pdvZeroCollection);
+
+      // Delete documents in batches
+      const batchSize = 500; // Define the batch size
+      let batch = writeBatch(db);
+      let count = 0;
+
+	  for (const doc of querySnapshot.docs) {
+        batch.delete(doc.ref);
+        count++;
+
+        if (count >= batchSize) {
+          await batch.commit();
+          batch = writeBatch(db);
+          count = 0;
+        }
+      }
+
+      // Commit the final batch
+      if (count > 0) {
+        await batch.commit();
+      }
+
+      console.log("Coleção pdvzero limpa com sucesso!");
+    } catch (error) {
+      console.error("Erro ao limpar a coleção pdvzero:", error);
     }
   };
 
@@ -218,6 +254,18 @@ const ControleDeCaixa: React.FC<CaixaProps> = ({ onCaixaFechado }) => {
           data: dataAbertura,
         });
         console.log("Transação de abertura de caixa gravada na coleção /ControleFinanceiro com ID:", docId);
+
+		// Adicionar informações de abertura do caixa na coleção pdvzero
+		const pdvZeroCollection = collection(db, "pdvzero");
+		await addDoc(pdvZeroCollection, {
+			tipo: 'abertura',
+			valor: valorInicial,
+			descricao: 'Abertura de caixa',
+			data: dataAbertura,
+			horaAbertura: horaAbertura,
+			usuarioAbertura: user.id,
+		});
+		console.log("Informações de abertura de caixa gravadas na coleção /pdvzero com ID:", docId);
       }
 
 
@@ -250,8 +298,14 @@ const ControleDeCaixa: React.FC<CaixaProps> = ({ onCaixaFechado }) => {
   const handleFecharCaixa = async () => {
     setError(null);
     console.log("Tentando fechar o caixa com ID:", caixaDataPersistida?.id); // Adicionado log
+    setTotalEntrada(0);
+    setTotalSaida(0);
+    setTotalCompra(0);
+    setSaldoFinal(0);
+
+    let hasOpenTables = false;
     try {
-      const hasOpenTables = tables.some(table => table.status !== 'available');
+      hasOpenTables = tables.some(table => table.status !== 'available');
       if (hasOpenTables) {
         toast({
           title: "Erro",
@@ -260,6 +314,11 @@ const ControleDeCaixa: React.FC<CaixaProps> = ({ onCaixaFechado }) => {
         });
         return;
       }
+
+      setTotalEntrada(0);
+      setTotalSaida(0);
+      setTotalCompra(0);
+      setSaldoFinal(0);
 
       if (!valorFinal) {
         setError('Valor final é obrigatório.');
@@ -293,6 +352,13 @@ const ControleDeCaixa: React.FC<CaixaProps> = ({ onCaixaFechado }) => {
       const totalCompra = comprasSnapshot.docs.reduce((sum, doc) => sum + doc.data().valor, 0);
       const saldoFinal = totalEntrada - totalSaida - totalCompra;
 
+      setTotalEntrada(0);
+      setTotalSaida(0);
+      setTotalCompra(0);
+      setSaldoFinal(0);
+
+      setTotalEntrada(0);
+      setTotalSaida(0);
       try {
         const horaFechamento = new Date().toLocaleTimeString();
         const dataAbertura = caixaDataPersistida?.dataAbertura || "";
@@ -317,6 +383,11 @@ const ControleDeCaixa: React.FC<CaixaProps> = ({ onCaixaFechado }) => {
           totalCompra: totalCompra,
           saldoFinal: saldoFinal,
         });
+
+        setTotalEntrada(0);
+        setTotalSaida(0);
+        setTotalCompra(0);
+        setSaldoFinal(0);
 
         console.log("Caixa fechado com ID:", docId);
       } catch (error: any) {
@@ -363,6 +434,10 @@ const ControleDeCaixa: React.FC<CaixaProps> = ({ onCaixaFechado }) => {
     } catch (e: any) {
       setError('Erro ao fechar caixa: ' + e.message);
       console.error("Erro ao fechar caixa:", e);
+    } finally {
+		if (!hasOpenTables) {
+			await clearPdvZeroCollection();
+		}
     }
   };
 

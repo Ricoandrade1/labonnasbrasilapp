@@ -100,6 +100,21 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({ paymentMethod, total, ope
                     valor: total,
                   });
                   console.log("Dados salvos com sucesso na coleção /pdv.");
+
+                  // Salvar também na coleção "pdvzero"
+                  await addDoc(collection(db, "pdvzero"), {
+                    tableId: tableId,
+                    paymentMethod: paymentMethod,
+                    total: total,
+                    timestamp: new Date().toISOString(),
+                    categoria: "mesa",
+                    data: new Date().toISOString(),
+                    descricao: `Mesa ${tableId}`,
+                    tipo: "entrada",
+                    usuario: user.name,
+                    valor: total,
+                  });
+                  console.log("Dados salvos com sucesso na coleção /pdvzero.");
                 } else {
                   console.log("Mesa não está aberta. Transação não registrada no controle de caixa.");
                 }
