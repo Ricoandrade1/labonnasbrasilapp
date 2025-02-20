@@ -20,20 +20,22 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
-import { useState } from "react";
+import { useState, useContext } from "react";
 import { useTable } from "@/context/TableContext";
+import { AuthContext, User } from "@/context/AuthContext";
 
 const SidebarMenu = () => {
   const navigate = useNavigate();
   const location = useLocation();
-    const [initialValue, setInitialValue] = useState("");
+  const [initialValue, setInitialValue] = useState("");
   const { setInitialCashValue } = useTable();
+  const { user } = useContext(AuthContext) as { user: User | null };
 
   const menuItems = [
     { name: "Mesa", path: "/tables", icon: LayoutGrid },
-    { name: "Caixa", path: "/cashier", icon: DollarSign },
-    { name: "Gerente", path: "/gerente", icon: Users },
-    { name: "Adm", path: "/adm", icon: Settings },
+    { name: "Caixa", path: "/cashier", icon: DollarSign, roles: ["Caixa", "gerente", "adm"] },
+    { name: "Gerente", path: "/gerente", icon: Users, roles: ["gerente", "adm"] },
+    { name: "Adm", path: "/adm", icon: Settings, roles: ["adm"] },
   ];
 
   return (
@@ -56,6 +58,9 @@ const SidebarMenu = () => {
         <div className="flex flex-col gap-2 p-4">
           {menuItems.map((item) => {
             const Icon = item.icon;
+            if (item.roles && (!user || !item.roles.includes(user.role))) {
+              return null;
+            }
             return (
               <Button
                 key={item.path}
@@ -73,7 +78,7 @@ const SidebarMenu = () => {
             );
           })}
         </div>
-              </SheetContent>
+      </SheetContent>
     </Sheet>
   );
 };
