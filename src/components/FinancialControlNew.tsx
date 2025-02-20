@@ -96,6 +96,7 @@ const FinancialControlNew: React.FC<FinancialControlNewProps> = ({ setCaixaAbert
               id="startDate"
               className="w-full"
               disabled
+              value={new Date().toISOString().split('T')[0]}
             />
           </div>
         </div>

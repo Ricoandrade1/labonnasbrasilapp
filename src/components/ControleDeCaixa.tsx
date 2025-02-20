@@ -444,13 +444,13 @@ const fetchTotalPdv = () => {
         saldoFinal: saldoFinal,
       });
       console.log("Informações gravadas na coleção /fechamentodecaixa com ID:", docId);
+		if (!hasOpenTables) {
+			await clearPdvZeroCollection();
+		}
     } catch (e: any) {
       setError('Erro ao fechar caixa: ' + e.message);
       console.error("Erro ao fechar caixa:", e);
     } finally {
-		if (!hasOpenTables) {
-			await clearPdvZeroCollection();
-		}
     }
   };
 

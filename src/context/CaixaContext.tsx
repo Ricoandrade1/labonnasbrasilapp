@@ -1,7 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { db, doc, getDoc, setDoc, collection, getDocs, onSnapshot } from '../lib/api';
 
-interface CaixaContextProps {
+export interface CaixaContextProps {
   caixaAberto: boolean;
   setCaixaAberto: (aberto: boolean) => void;
   totalCaixa: number;
@@ -50,7 +50,13 @@ export const CaixaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     fetchTotalPdv();
 
-    return () => unsubscribe();
+    return () => {
+      try {
+        unsubscribe();
+      } catch (error) {
+        console.error("Erro ao cancelar a inscrição:", error);
+      }
+    };
   }, []);
 
   useEffect(() => {
