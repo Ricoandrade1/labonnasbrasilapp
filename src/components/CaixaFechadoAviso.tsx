@@ -1,6 +1,5 @@
-import React, { useContext } from 'react';
+import React from 'react';
 import { useCaixa } from '../context/CaixaContext';
-import { AuthContext, User } from '../context/AuthContext';
 
 interface CaixaFechadoAvisoProps {
   children?: React.ReactNode;
@@ -8,9 +7,8 @@ interface CaixaFechadoAvisoProps {
 
 const CaixaFechadoAviso: React.FC<CaixaFechadoAvisoProps> = ({ children }) => {
   const { caixaAberto } = useCaixa();
-  const { user } = useContext(AuthContext) as { user: User | null };
 
-  if (caixaAberto || (user && (user.role === 'Caixa' || user.role === 'gerente' || user.role === 'adm'))) {
+  if (caixaAberto) {
     return null;
   }
 
