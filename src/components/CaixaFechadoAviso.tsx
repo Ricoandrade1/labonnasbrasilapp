@@ -1,7 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useCaixa } from '../context/CaixaContext';
-import { db } from '../lib/firebase';
-import { collection, getDocs, query } from 'firebase/firestore';
 
 interface CaixaFechadoAvisoProps {
   children?: React.ReactNode;
@@ -9,19 +7,8 @@ interface CaixaFechadoAvisoProps {
 
 const CaixaFechadoAviso: React.FC<CaixaFechadoAvisoProps> = ({ children }) => {
   const { caixaAberto } = useCaixa();
-  const [exibirAviso, setExibirAviso] = useState(true);
 
-  useEffect(() => {
-    const verificarColecaoPdvZero = async () => {
-      const pdvZeroCollection = collection(db, "pdvzero");
-      const querySnapshot = await getDocs(query(pdvZeroCollection));
-      setExibirAviso(querySnapshot.empty);
-    };
-
-    verificarColecaoPdvZero();
-  }, []);
-
-  if (!exibirAviso) {
+  if (caixaAberto) {
     return null;
   }
 

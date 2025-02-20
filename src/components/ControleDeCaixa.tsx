@@ -122,7 +122,7 @@ const fetchTotalPdv = () => {
 
   useEffect(() => {
     const unsubscribePdv = fetchTotalPdv();
-	const fetchData = async () => {
+    const fetchData = async () => {
       setLoading(true);
       setError(null);
       try {
@@ -177,6 +177,11 @@ const fetchTotalPdv = () => {
           setCaixaData(null);
           setCaixaAberto(false);
         }
+
+        // Verificar se a coleção pdvzero está vazia
+        const pdvZeroCollection = collection(db, "pdvzero");
+        const querySnapshot = await getDocs(query(pdvZeroCollection));
+        setCaixaAberto(!querySnapshot.empty);
       } catch (e: any) {
         setError('Erro ao verificar status do caixa: ' + e.message);
         console.error("Erro ao verificar status do caixa:", e);
@@ -186,9 +191,9 @@ const fetchTotalPdv = () => {
     };
 
     fetchData();
-	return () => {
-		unsubscribePdv();
-	}
+    return () => {
+      unsubscribePdv();
+    }
   }, [user, totalEntrada, totalSaida, totalCompra]);
 
   useEffect(() => {
