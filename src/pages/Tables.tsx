@@ -7,7 +7,6 @@ import { useTable } from "@/context/TableContext";
 import { useEffect, useState } from "react";
 import { TableStatus } from "@/context/TableContext";
 import { db, collection, getDocs, getFirebaseOrderHistory, query, where, orderBy, limit } from "@/lib/api";
-import { useCaixa } from "@/context/CaixaContext";
 import CaixaFechadoAviso from "@/components/CaixaFechadoAviso";
 
 interface Table {
@@ -48,19 +47,12 @@ const Tables = () => {
   const { tables, setAllTablesAvailable, forceUpdateTables, setTables } = tableContext;
   const [loading, setLoading] = useState(true);
   const [activeOrders, setActiveOrders] = useState<any[]>([]);
-  const { caixaAberto } = useCaixa(); // Obtém o estado do caixa do contexto
 
   useEffect(() => {
     if (!isAuthenticated) {
       navigate("/login");
     }
   }, [isAuthenticated, navigate]);
-
-  useEffect(() => {
-    if (caixaAberto !== undefined) {
-      forceUpdateTables();
-    }
-  }, [caixaAberto, forceUpdateTables]);
 
   const fetchTables = async () => {
     try {
@@ -261,8 +253,7 @@ const Tables = () => {
                     return (
                       <button
                         key={table.id}
-                        onClick={caixaAberto ? () => handleTableClick(String(table.tableNumber)) : undefined}
-                        className={`relative group p-4 rounded-lg border transition-all duration-200 ${status.color} ${status.borderColor} hover:shadow-md ${table.status === "occupied" ? "bg-rose-100 border-rose-200" : ""} ${!caixaAberto ? "cursor-not-allowed opacity-50" : ""}`}
+                        className={`relative group p-4 rounded-lg border transition-all duration-200 ${status.color} ${status.borderColor} hover:shadow-md ${table.status === "occupied" ? "bg-rose-100 border-rose-200" : ""}`}
                       >
                         <div className="flex flex-col items-center gap-2">
                           <span className={`text-lg font-semibold ${status.textColor}`}>
@@ -294,25 +285,23 @@ const Tables = () => {
           </div>
         </div>
       )
-      {caixaAberto === false && (
-        <CaixaFechadoAviso>
-          <div className="flex flex-col items-center justify-center">
-            <Button
-              variant="default"
-              size="sm"
-              onClick={() => {
-                console.log("onClick - Botão Sair clicado");
-                logout();
-                navigate("/login");
-              }}
-              className="flex items-center gap-2 text-white bg-green-500 hover:bg-green-700 mt-4"
-            >
-              <LogOut className="h-4 w-4" />
-              Sair
-            </Button>
-          </div>
-        </CaixaFechadoAviso>
-      )}
+      <CaixaFechadoAviso>
+        <div className="flex flex-col items-center justify-center">
+          <Button
+            variant="default"
+            size="sm"
+            onClick={() => {
+              console.log("onClick - Botão Sair clicado");
+              logout();
+              navigate("/login");
+            }}
+            className="flex items-center gap-2 text-white bg-green-500 hover:bg-green-700 mt-4"
+          >
+            <LogOut className="h-4 w-4" />
+            Sair
+          </Button>
+        </div>
+      </CaixaFechadoAviso>
     </div>
   );
 };
