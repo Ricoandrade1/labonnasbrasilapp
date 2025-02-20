@@ -3,7 +3,8 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { format } from 'date-fns';
+import { parse, isValid, format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { db } from "../lib/firebase";
 import { collection, addDoc, onSnapshot, getDocs, query, where, Timestamp } from "firebase/firestore";
 import { useCaixa } from '../context/CaixaContext';
@@ -50,12 +51,24 @@ const FinancialControlNew: React.FC<FinancialControlNewProps> = ({ setCaixaAbert
         const querySnapshot = await getDocs(controleFinanceiroCollection);
         const initialTransactions = querySnapshot.docs.map(doc => {
           const data = doc.data();
+          let date = data.data;
+          if (typeof date === 'string') {
+            const parsedDate = parse(date, 'dd/MM/yyyy', new Date(), { locale: ptBR });
+            if (isValid(parsedDate)) {
+              date = parsedDate.toISOString();
+            } else {
+              console.warn("Data inválida encontrada:", data.data);
+              date = new Date().toISOString();
+            }
+          } else {
+            date = new Date().toISOString();
+          }
           return {
             id: doc.id,
             type: data.tipo || 'entrada',
             amount: data.valor || 0,
             description: data.descricao || '',
-            date: data.data ? (typeof data.data === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d*)?Z$/.test(data.data) ? new Date(data.data).toISOString() : new Date().toISOString()) : new Date().toISOString(),
+            date: date,
           } as Transaction;
         });
         setTransactions(initialTransactions);
@@ -64,20 +77,17 @@ const FinancialControlNew: React.FC<FinancialControlNewProps> = ({ setCaixaAbert
         const unsubscribeControleFinanceiro = onSnapshot(controleFinanceiroCollection, (snapshot) => {
           const controleFinanceiroList = snapshot.docs.map(doc => {
             const data = doc.data();
-            let date = new Date().toISOString();
-            if (data.data) {
-              console.log("Data encontrada:", data.data);
-              let parsedDate;
-              try {
-                parsedDate = new Date(data.data);
-                if (parsedDate instanceof Date && !isNaN(parsedDate.getTime())) {
-                  date = parsedDate.toISOString();
-                } else {
-                  console.warn("Data inválida encontrada:", data.data);
-                }
-              } catch (e) {
-                console.error("Erro ao analisar a data:", data.data, e);
+            let date = data.data;
+            if (typeof date === 'string') {
+              const parsedDate = parse(date, 'dd/MM/yyyy', new Date(), { locale: ptBR });
+              if (isValid(parsedDate)) {
+                date = parsedDate.toISOString();
+              } else {
+                console.warn("Data inválida encontrada:", data.data);
+                date = new Date().toISOString();
               }
+            } else {
+              date = new Date().toISOString();
             }
             return {
               id: doc.id,
