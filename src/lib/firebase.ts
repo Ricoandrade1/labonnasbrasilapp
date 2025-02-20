@@ -219,4 +219,4 @@ const createUniqueTables = async () => {
   }
 };
 
-export { auth, db, addTable, addOrder, addProduct, addTransaction, getTables, clearOrders, clearTables, updateTableStatus, onTablesChange, getDocs, collection, deleteDoc, doc, updateDoc, addDoc, createUniqueTables, addTableWithId, getFirestoreInstance, createUserCollection, addTable as default }; // Export auth
+export { auth, db, addTable, addOrder, addProduct, addTransaction, getTables, clearOrders, clearTables, updateTableStatus, onTablesChange, getDocs, collection, deleteDoc, doc, updateDoc, addDoc, createUniqueTables, addTableWithId, getFirestoreInstance, createUserCollection, onSnapshot, addTable as default }; // Export auth

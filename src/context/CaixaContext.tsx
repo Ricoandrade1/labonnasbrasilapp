@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { db, doc, getDoc, setDoc, collection, getDocs } from '../lib/api';
+import { db, doc, getDoc, setDoc, collection, getDocs, onSnapshot } from '../lib/api';
 
 interface CaixaContextProps {
   caixaAberto: boolean;
@@ -37,25 +37,20 @@ export const CaixaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   useEffect(() => {
-    const fetchCaixaAberto = async () => {
-      try {
-        const docRef = doc(db, "Caixa", "estado");
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          const aberto = docSnap.data().aberto || false;
-          setCaixaAberto(aberto);
-        } else {
-          console.log("Documento 'estado' não encontrado na coleção 'Caixa'.");
-          // Se o documento não existir, cria um com o valor inicial de caixaAberto como false
-          await setDoc(docRef, { aberto: false });
-        }
-      } catch (error) {
-        console.error("Erro ao buscar o estado do caixa no Firebase:", error);
+    const unsubscribe = onSnapshot(doc(db, "Caixa", "estado"), async (doc) => {
+      if (doc.exists()) {
+        const aberto = doc.data().aberto || false;
+        setCaixaAberto(aberto);
+      } else {
+        console.log("Documento 'estado' não encontrado na coleção 'Caixa'.");
+        // Se o documento não existir, cria um com o valor inicial de caixaAberto como false
+        await setDoc(doc(db, "Caixa", "estado"), { aberto: false });
       }
-    };
+    });
 
-    fetchCaixaAberto();
     fetchTotalPdv();
+
+    return () => unsubscribe();
   }, []);
 
   useEffect(() => {

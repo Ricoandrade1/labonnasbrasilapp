@@ -18,6 +18,7 @@ import {
   addDoc,
   createUniqueTables,
   addTableWithId,
+  onSnapshot
 } from "./firebase";
 import { getDoc, setDoc, query, where, orderBy, limit } from "firebase/firestore";
 import { TableOrder, OrderItem } from "../types";
@@ -174,5 +175,6 @@ export {
   getDoc,
   setDoc,
   addTransactionToControleFinanceiro,
-  closeTableAndRegisterPayment
+  closeTableAndRegisterPayment,
+  onSnapshot
 };
