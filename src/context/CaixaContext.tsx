@@ -13,14 +13,8 @@ interface CaixaContextProps {
 
 const CaixaContext = createContext<CaixaContextProps | undefined>(undefined);
 
-const LOCAL_STORAGE_KEY = 'caixaAberto';
-
 export const CaixaProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [caixaAberto, setCaixaAberto] = useState(() => {
-    const storedValue = localStorage.getItem(LOCAL_STORAGE_KEY);
-    return storedValue === 'true' ? true : false;
-  });
-
+  const [caixaAberto, setCaixaAberto] = useState(false);
   const [totalCaixa, setTotalCaixa] = useState(0);
   const [totalEntrada, setTotalEntrada] = useState<number>(0);
   const [totalSaida, setTotalSaida] = useState<number>(0);
@@ -50,12 +44,10 @@ export const CaixaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         if (docSnap.exists()) {
           const aberto = docSnap.data().aberto || false;
           setCaixaAberto(aberto);
-          localStorage.setItem(LOCAL_STORAGE_KEY, String(aberto));
         } else {
           console.log("Documento 'estado' não encontrado na coleção 'Caixa'.");
           // Se o documento não existir, cria um com o valor inicial de caixaAberto como false
           await setDoc(docRef, { aberto: false });
-          localStorage.setItem(LOCAL_STORAGE_KEY, 'false');
         }
       } catch (error) {
         console.error("Erro ao buscar o estado do caixa no Firebase:", error);
@@ -77,8 +69,6 @@ export const CaixaProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
 
     updateCaixaAberto();
-
-    localStorage.setItem(LOCAL_STORAGE_KEY, String(caixaAberto));
   }, [caixaAberto]);
 
   return (
