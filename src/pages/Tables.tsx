@@ -253,6 +253,7 @@ const Tables = () => {
                     return (
                       <button
                         key={table.id}
+                        onClick={() => handleTableClick(table.id)}
                         className={`relative group p-4 rounded-lg border transition-all duration-200 ${status.color} ${status.borderColor} hover:shadow-md ${table.status === "occupied" ? "bg-rose-100 border-rose-200" : ""}`}
                       >
                         <div className="flex flex-col items-center gap-2">

@@ -46,12 +46,12 @@ const CaixaFechadoAviso: React.FC<CaixaFechadoAvisoProps> = ({ children }) => {
         borderRadius: '10px',
         maxWidth: '90%',
         margin: '0 auto',
-        pointerEvents: 'auto',
         fontSize: '0.9em',
         position: 'relative',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
+        pointerEvents: 'auto',
       }}
       >
         <p>🔔 ATENÇÃO! O CAIXA AINDA NÃO FOI ABERTO 🔔</p>
