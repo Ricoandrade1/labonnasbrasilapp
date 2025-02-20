@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../lib/firebase';
-import { collection, getDocs, query } from 'firebase/firestore';
+import { collection, onSnapshot } from 'firebase/firestore';
 
 interface CaixaFechadoAvisoProps {
   children?: React.ReactNode;
@@ -10,13 +10,13 @@ const CaixaFechadoAviso: React.FC<CaixaFechadoAvisoProps> = ({ children }) => {
   const [exibirAviso, setExibirAviso] = useState(true);
 
   useEffect(() => {
-    const verificarColecaoPdvZero = async () => {
-      const pdvZeroCollection = collection(db, "pdvzero");
-      const querySnapshot = await getDocs(query(pdvZeroCollection));
-      setExibirAviso(querySnapshot.empty);
-    };
+    const pdvZeroCollection = collection(db, "pdvzero");
 
-    verificarColecaoPdvZero();
+    const unsubscribe = onSnapshot(pdvZeroCollection, (snapshot) => {
+      setExibirAviso(snapshot.empty);
+    });
+
+    return () => unsubscribe();
   }, []);
 
   if (!exibirAviso) {
