@@ -10,6 +10,7 @@ import { useTable } from '../context/TableContext';
 import { useToast } from "@/hooks/use-toast";
 import FinancialControlNew from './FinancialControlNew';
 import { useCaixa } from '../context/CaixaContext';
+import { CaixaContextProps } from '../context/CaixaContext';
 
 interface CaixaProps {
   onCaixaFechado?: () => void;
@@ -47,36 +48,34 @@ const ControleDeCaixa: React.FC<CaixaProps> = ({ onCaixaFechado }) => {
   const [saldoFinal, setSaldoFinal] = useState<number>(0);
 
 const fetchTotalPdv = () => {
-    try {
-      const pdvCollection = collection(db, "pdvzero");
-      const unsubscribe = onSnapshot(pdvCollection, (snapshot) => {
-        let totalEntrada = 0;
-        let totalSaida = 0;
-        let totalCompra = 0;
+  try {
+    const pdvCollection = collection(db, "pdvzero");
+    const unsubscribe = onSnapshot(pdvCollection, (snapshot) => {
+      let totalEntrada = 0;
+      let totalSaida = 0;
+      let totalCompra = 0;
 
-        snapshot.docs.forEach((doc) => {
-          const data = doc.data();
-          if (data.tipo === 'entrada') {
-            totalEntrada += data.valor || 0;
-          } else if (data.tipo === 'saida') {
-            totalSaida += data.valor || 0;
-          } else if (data.tipo === 'compra') {
-            totalCompra += data.valor || 0;
-          } else if (data.tipo === 'inicio') {
-			totalEntrada += data.valor || 0;
-		  }
-        });
-
-        setTotalEntrada(totalEntrada);
-        setTotalSaida(totalSaida);
-        setTotalCompra(totalCompra);
-        calculateSaldoFinal();
+      snapshot.docs.forEach((doc) => {
+        const data = doc.data();
+        if (data.tipo === 'entrada' || data.tipo === 'abertura') {
+          totalEntrada += data.valor || 0;
+        } else if (data.tipo === 'saida') {
+          totalSaida += data.valor || 0;
+        } else if (data.tipo === 'compra') {
+          totalCompra += data.valor || 0;
+        }
       });
-      return unsubscribe;
-    } catch (error) {
-      console.error("Erro ao buscar os valores do PDV:", error);
-    }
-  };
+
+      setTotalEntrada(totalEntrada);
+      setTotalSaida(totalSaida);
+      setTotalCompra(totalCompra);
+      calculateSaldoFinal();
+    });
+    return unsubscribe;
+  } catch (error) {
+    console.error("Erro ao buscar os valores do PDV:", error);
+  }
+};
 
   const clearPdvZeroCollection = async () => {
     try {
@@ -219,7 +218,7 @@ const fetchTotalPdv = () => {
       const horaAbertura = new Date().toLocaleTimeString();
       const dataAbertura = new Date().toLocaleDateString();
       const usuarioAbertura = user.id;
-      const docId = `abertura-${Date.now()}`; // Usar timestamp como ID do documento
+      const docId = `abertura-${Date.now()}`;
       const aberturadecaixaFechamentoCollection = collection(db, 'aberturadecaixa - fechamentodecaixa');
       const docRef = doc(aberturadecaixaFechamentoCollection, docId);
       const docSnap = await getDoc(docRef);
@@ -276,6 +275,10 @@ const fetchTotalPdv = () => {
 			usuarioAbertura: user.id,
 		});
 		console.log("Informações de abertura de caixa gravadas na coleção /pdvzero com ID:", docId);
+
+		// Somar o valor inicial aos valores existentes
+		setTotalEntrada(prevTotalEntrada => prevTotalEntrada + valorInicial);
+		setSaldoFinal(prevSaldoFinal => prevSaldoFinal + valorInicial);
       }
 
 
