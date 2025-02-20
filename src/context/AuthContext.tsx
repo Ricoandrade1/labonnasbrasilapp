@@ -130,3 +130,5 @@ export const useAuth = () => {
 };
 
 export type { AuthContextType, User };
+
+export { AuthContext };
