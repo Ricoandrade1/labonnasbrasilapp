@@ -46,21 +46,31 @@ const ControleDeCaixa: React.FC<CaixaProps> = ({ onCaixaFechado }) => {
   const [totalCompra, setTotalCompra] = useState<number>(0);
   const [saldoFinal, setSaldoFinal] = useState<number>(0);
 
- const fetchTotalPdv = () => {
+const fetchTotalPdv = () => {
     try {
       const pdvCollection = collection(db, "pdvzero");
       const unsubscribe = onSnapshot(pdvCollection, (snapshot) => {
-        let total = 0;
+        let totalEntrada = 0;
+        let totalSaida = 0;
+        let totalCompra = 0;
+
         snapshot.docs.forEach((doc) => {
           const data = doc.data();
-		  if (data.tipo === 'abertura') {
-			total += data.valor || 0;
-		  } else {
-          	total += data.total || 0;
+          if (data.tipo === 'entrada') {
+            totalEntrada += data.valor || 0;
+          } else if (data.tipo === 'saida') {
+            totalSaida += data.valor || 0;
+          } else if (data.tipo === 'compra') {
+            totalCompra += data.valor || 0;
+          } else if (data.tipo === 'inicio') {
+			totalEntrada += data.valor || 0;
 		  }
         });
-        setTotalEntrada(total);
-		calculateSaldoFinal();
+
+        setTotalEntrada(totalEntrada);
+        setTotalSaida(totalSaida);
+        setTotalCompra(totalCompra);
+        calculateSaldoFinal();
       });
       return unsubscribe;
     } catch (error) {

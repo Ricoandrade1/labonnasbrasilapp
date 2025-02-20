@@ -95,14 +95,6 @@ const Cashier = () => {
       <PDVPanel />
       <div className="flex justify-between items-center mb-4">
       </div>
-      <Button onClick={async () => {
-        const newTable = {
-          tableNumber: String(openTables.length + 1),
-          status: "occupied",
-        };
-        await addTable(newTable);
-        navigate(`/tablecaixa`);
-      }}>Abrir Mesa</Button>
       <Caixa caixaAberto={caixaAberto} setCaixaAberto={setCaixaAberto} onCaixaFechado={handleCaixaFechado} setCaixaData={setCaixaData} totalEntrada={totalEntrada} setTotalEntrada={setTotalEntrada} totalSaida={totalSaida} setTotalSaida={setTotalSaida} totalCompra={totalCompra} setTotalCompra={setTotalCompra} saldoFinal={saldoFinal} setSaldoFinal={setSaldoFinal} />
       <div className="grid gap-6 md:grid-cols-2">
         <Card className="mb-4">
