@@ -46,7 +46,9 @@ function App() {
       <CaixaProvider>
         <Router>
           <TableProvider>
-            {isAuthenticated && <SidebarMenu />}
+            {isAuthenticated && (
+              <SidebarMenu />
+            )}
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route

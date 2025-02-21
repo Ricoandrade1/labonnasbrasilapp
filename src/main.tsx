@@ -3,7 +3,7 @@ import App from './App'
 import './index.css'
 
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/service-worker.js')
+  navigator.serviceWorker.register('/public/service-worker.js')
     .then(registration => {
       console.log('Service Worker registrado com sucesso:', registration);
     })
