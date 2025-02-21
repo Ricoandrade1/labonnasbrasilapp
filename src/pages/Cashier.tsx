@@ -25,7 +25,7 @@ import { useTable } from "@/context/TableContext";
 import { useState, useEffect, useCallback } from "react";
 import { getTables } from "@/lib/firebase";
 import { db } from "../lib/firebase";
-import { collection, getDocs, query, where, doc, getDoc } from "firebase/firestore";
+import { collection, getDocs, query, where, doc, getDoc, onSnapshot, orderBy } from "firebase/firestore";
 
 
 interface OpenTable {
@@ -36,10 +36,12 @@ interface OpenTable {
 }
 
 interface Transaction {
-  metodo: string;
-  valentia: number;
+  data: string;
   descricao: string;
-  timestamp?: Date;
+  horaAbertura: string;
+  tipo: string;
+  usuarioAbertura: string;
+  valor: number;
 }
 
 const Cashier = () => {
@@ -65,30 +67,28 @@ const Cashier = () => {
   }, []);
 
   React.useEffect(() => {
-    const fetchTransactions = async () => {
-      if (!caixaData?.id) {
-        setTransactions([]);
-        return;
-      }
-
-      const pdvDocRef = doc(db, 'pdv', caixaData.id);
-      const pdvDocSnapshot = await getDoc(pdvDocRef);
-
-      if (pdvDocSnapshot.exists()) {
-        const pdvData = pdvDocSnapshot.data() as { transactions: any[] };
-        setTransactions(pdvData.transactions || []);
-      } else {
-        setTransactions([]);
-      }
+    const fetchTransactions = () => {
+      const pdvZeroCollection = collection(db, 'pdvzero');
+      const q = query(pdvZeroCollection, orderBy('horaAbertura', 'desc'));
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const transactions = snapshot.docs.map(doc => doc.data() as Transaction);
+        console.log("transactions:", transactions);
+        setTransactions(transactions);
+      });
+      return unsubscribe;
     };
 
     fetchTables();
-    fetchTransactions();
+    const unsubscribeTransactions = fetchTransactions();
+
+    return () => {
+      unsubscribeTransactions();
+    };
   }, [caixaAberto, caixaData, fetchTables]);
 
   const filteredTransactions = filter === 'Todos'
     ? transactions
-    : transactions.filter(transaction => transaction.metodo === filter);
+    : transactions.filter(transaction => transaction.tipo === filter);
 
   return (
     <div className="container mx-auto py-6 space-y-6">
@@ -174,10 +174,10 @@ const Cashier = () => {
               <TableBody>
                 {filteredTransactions.map((transaction, index) => (
                   <TableRow key={index}>
-                    <TableCell>{transaction.metodo}</TableCell>
+                    <TableCell>{transaction.tipo}</TableCell>
                     <TableCell className="break-words">{transaction.descricao.length > 30 ? transaction.descricao.substring(0, 30) + "..." : transaction.descricao}</TableCell>
-                    <TableCell>€ {transaction.valentia.toFixed(2)}</TableCell>
-                    <TableCell>{transaction.timestamp?.toLocaleDateString()}</TableCell>
+                    <TableCell>€ {transaction.valor.toFixed(2)}</TableCell>
+                    <TableCell>{transaction.data}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
