@@ -19,7 +19,7 @@ import { TableProvider } from "@/context/TableContext";
 import ResetTables from "./components/ResetTables";
 import { createUniqueTables } from './lib/firebase';
 
-import { ReactNode, useMemo, useContext } from 'react';
+import { ReactNode, useMemo } from 'react';
 
 interface PrivateRouteProps {
   children: React.ReactNode;
@@ -39,16 +39,12 @@ function App() {
     createUniqueTables();
   }, []);
 
-  const { isAuthenticated } = useAuth();
-
   return (
     <AuthProvider>
       <CaixaProvider>
         <Router>
           <TableProvider>
-            {isAuthenticated && (
-              <SidebarMenu />
-            )}
+            <SidebarMenu />
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route
