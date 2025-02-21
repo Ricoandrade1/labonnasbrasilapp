@@ -7,6 +7,16 @@ const urlsToCache = [
   '/192x192.png',
   '/512x512.png',
   '/src/main.tsx',
+  '/src/App.tsx',
+  '/src/index.css',
+  '/src/assets/react.svg',
+  '/vite.svg',
+  '/public/192x192.png',
+  '/public/512x512.png',
+  '/public/favicon.ico',
+  '/public/og-image.png',
+  '/public/placeholder.png',
+  '/public/placeholder.svg',
   // Adicione aqui outros arquivos que você quer que sejam cacheados
 ];
 
