@@ -13,7 +13,8 @@
       "type": "image/png"
     }
   ],
-  "start_url": "https://labonnasbrasil.netlify.app",
+  "start_url": "./",
+  "id": "/cashier",
   "display": "standalone",
   "theme_color": "#ffffff",
   "background_color": "#ffffff"
