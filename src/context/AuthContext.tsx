@@ -27,7 +27,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     console.log("AuthProvider montado");
-    const storedUser = sessionStorage.getItem("user");
+    const storedUser = localStorage.getItem("user");
     if (storedUser) {
       const storedUserParsed = JSON.parse(storedUser);
       const user: User = {
@@ -36,11 +36,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         role: storedUserParsed.role,
         storeId: storedUserParsed.storeId,
       };
-      console.log("Usuário recuperado do sessionStorage:", user);
+      console.log("Usuário recuperado do localStorage:", user);
       setUser(user);
       setCaixaAberto(true);
     } else {
-      console.log("Nenhum usuário encontrado no sessionStorage.");
+      console.log("Nenhum usuário encontrado no localStorage.");
     }
     return () => {
       console.log("AuthProvider desmontado");
@@ -83,7 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(loggedInUser);
         setCaixaAberto(true);
         console.log("AuthContext.tsx - loggedInUser.role:", loggedInUser.role);
-        sessionStorage.setItem("user", JSON.stringify(loggedInUser));
+        localStorage.setItem("user", JSON.stringify(loggedInUser));
       } else {
         throw new Error("Usuário não encontrado");
       }
@@ -104,7 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = () => {
     setUser(null);
     setCaixaAberto(false);
-    sessionStorage.removeItem("user");
+    localStorage.removeItem("user");
   };
 
   return (
