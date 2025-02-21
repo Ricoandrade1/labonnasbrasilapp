@@ -29,7 +29,7 @@ const PrivateRoute = ({ children }: PrivateRouteProps) => {
   const { isAuthenticated } = useAuth();
   console.log("PrivateRoute - isAuthenticated:", isAuthenticated);
   if (!isAuthenticated) {
-    return <div>Não autenticado</div>;
+    return <Navigate to="/login" />;
   }
   return children;
 };
